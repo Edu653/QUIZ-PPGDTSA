@@ -1,0 +1,4340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Quiz da Ciência • PPGDTSA / UFPel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* =========================================================================
+       PALETA INSTITUCIONAL PPGDTSA (ÁRVORE DE REDES • UFPEL)
+       ========================================================================= */
+    :root {
+      --ppg-green: #008b38;
+      --ppg-green-dark: #006629;
+      --ppg-green-soft: #eaf6ee;
+      --ppg-lime: #afca0b;
+      --ppg-lime-soft: #f4f9d6;
+      --ppg-sage: #bbc576;
+      --ppg-yellow: #ffd000;
+      --ppg-orange: #f37e00;
+      --ppg-terracotta: #d9531e;
+      --ppg-trunk: #1a1a18;
+      --ink-900: #181a17;
+      --ink-700: #374039;
+      --ink-500: #626e64;
+      --card-bg: rgba(255, 255, 255, 0.94);
+      --card-border: rgba(0, 139, 56, 0.16);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Oculta barras de rolagem nativas */
+    html, body, .quiz-stage, .screen-view, .terms-scroll-box, .leaderboard-list, .form-card {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar,
+    .quiz-stage::-webkit-scrollbar,
+    .screen-view::-webkit-scrollbar,
+    .terms-scroll-box::-webkit-scrollbar,
+    .leaderboard-list::-webkit-scrollbar,
+    .form-card::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #062312;
+      color: var(--ink-900);
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    /* =========================================================================
+       BACKGROUND NÃO-ESTÁTICO VIVO: AURORA PPGDTSA + REDE EM CANVAS
+       ========================================================================= */
+    .ppgdtsa-live-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+      background: linear-gradient(135deg, #051e0f 0%, #0c351b 40%, #1a2f0a 75%, #241906 100%);
+      transition: background 0.8s ease;
+    }
+
+    body.is-challenger-mode .ppgdtsa-live-bg {
+      background: linear-gradient(135deg, #2b0b04 0%, #4a1906 45%, #3d2400 80%, #1a0a04 100%);
+    }
+
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(50px);
+      opacity: 0.78;
+      will-change: transform;
+      mix-blend-mode: screen;
+    }
+    .aurora-blob.b1 {
+      width: 60vmax; height: 60vmax;
+      top: -15vmax; left: -10vmax;
+      background: radial-gradient(circle, rgba(0, 139, 56, 0.75) 0%, rgba(175, 202, 11, 0.35) 45%, transparent 70%);
+      animation: drift1 18s ease-in-out infinite alternate;
+    }
+    .aurora-blob.b2 {
+      width: 55vmax; height: 55vmax;
+      bottom: -15vmax; right: -10vmax;
+      background: radial-gradient(circle, rgba(243, 126, 0, 0.60) 0%, rgba(255, 208, 0, 0.32) 48%, transparent 70%);
+      animation: drift2 21s ease-in-out infinite alternate;
+    }
+    .aurora-blob.b3 {
+      width: 45vmax; height: 45vmax;
+      top: 35%; left: 28%;
+      background: radial-gradient(circle, rgba(175, 202, 11, 0.45) 0%, rgba(217, 83, 30, 0.25) 50%, transparent 72%);
+      animation: drift3 24s ease-in-out infinite alternate;
+    }
+    @keyframes drift1 { 0% { transform: translate3d(0,0,0) scale(1); } 100% { transform: translate3d(8vw, 12vh, 0) scale(1.08); } }
+    @keyframes drift2 { 0% { transform: translate3d(0,0,0) scale(1.05); } 100% { transform: translate3d(-10vw, -12vh, 0) scale(0.95); } }
+    @keyframes drift3 { 0% { transform: translate3d(-5vw,-5vh,0); } 100% { transform: translate3d(8vw, 6vh, 0) scale(1.1); } }
+
+    #ppgdtsaNetworkCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #confettiCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    /* =========================================================================
+       BARRA INSTITUCIONAL CENTRALIZADA NO TOPO DO PALCO (NUNCA SOBREPÕE!)
+       ========================================================================= */
+    .stage-brand-dock {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 8px 12px 2px;
+      width: 100%;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 30;
+      pointer-events: none;
+    }
+    .stage-brand-dock img {
+      object-fit: contain;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+      transition: transform 0.2s ease;
+    }
+    .stage-brand-dock .logo-ufpel { height: 21px; }
+    .stage-brand-dock .logo-dcsa { height: 17px; }
+    .stage-brand-dock .logo-ppgdtsa {
+      height: 24px;
+      pointer-events: auto !important;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: transform 0.15s ease;
+    }
+    .stage-brand-dock .logo-ppgdtsa:active {
+      transform: scale(1.22);
+    }
+
+    /* =========================================================================
+       PALCO PRINCIPAL COM AUTO-ENQUADRAMENTO (SEM ROLAGEM EXTERNA)
+       ========================================================================= */
+    .app-viewport {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+
+    .quiz-stage {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      height: 100%;
+      max-height: 100dvh;
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.48) 0%,
+        rgba(248, 252, 246, 0.36) 50%,
+        rgba(252, 255, 250, 0.44) 100%
+      );
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1.5px solid rgba(255, 255, 255, 0.65);
+      border-radius: 26px;
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.40);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    body.is-challenger-mode .quiz-stage {
+      background: linear-gradient(
+        180deg,
+        rgba(255, 250, 240, 0.92) 0%,
+        rgba(255, 242, 225, 0.88) 60%,
+        rgba(255, 248, 238, 0.94) 100%
+      );
+      border-color: rgba(255, 208, 0, 0.85);
+      box-shadow: 0 20px 50px rgba(243, 126, 0, 0.32), 0 0 0 2px var(--ppg-orange);
+    }
+
+    @media (min-width: 520px) {
+      .app-viewport { padding: 16px; }
+      .quiz-stage {
+        height: min(880px, 96dvh);
+        border-radius: 30px;
+        box-shadow: 0 24px 65px rgba(0, 0, 0, 0.45);
+      }
+      body.is-tv-mode .quiz-stage {
+        max-width: min(1160px, 96vw);
+        height: min(840px, 94dvh);
+      }
+    }
+
+    /* =========================================================================
+       ÍCONES MINIMALISTAS EM SVG
+       ========================================================================= */
+    .icon-svg {
+      width: 1.15em;
+      height: 1.15em;
+      vertical-align: -0.18em;
+      display: inline-block;
+      flex-shrink: 0;
+      stroke: currentColor;
+    }
+    .icon-svg.icon-lg { width: 1.35em; height: 1.35em; vertical-align: -0.22em; }
+    .icon-svg.icon-success { stroke: var(--ppg-green); }
+    .icon-svg.icon-danger { stroke: var(--ppg-terracotta); }
+
+    /* =========================================================================
+       BOTÕES MODERNOS COM CANTOS ARREDONDADOS (SQUIRCLE 12-14PX, SEM PÍLULA)
+       ========================================================================= */
+    button {
+      font-family: inherit;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .primary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--ppg-green) 0%, var(--ppg-green-dark) 100%);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.92rem;
+      padding: 11px 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 139, 56, 0.28);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s ease;
+    }
+    .primary-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(0, 139, 56, 0.36);
+    }
+    .primary-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    .primary-btn:disabled {
+      opacity: 0.50;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .secondary-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #ffffff;
+      color: var(--ppg-green-dark);
+      font-weight: 700;
+      font-size: 0.90rem;
+      padding: 10px 15px;
+      border-radius: 12px;
+      border: 1.5px solid #c7d8c4;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      transition: all 0.15s ease;
+    }
+    .secondary-btn:hover:not(:disabled) {
+      background: var(--ppg-green-soft);
+      border-color: var(--ppg-green);
+    }
+    .secondary-btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .orange-alt-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #fff8f2;
+      color: #b84e00;
+      font-weight: 700;
+      font-size: 0.90rem;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1.5px solid #f6b57d;
+      box-shadow: 0 2px 6px rgba(243, 126, 0, 0.12);
+      transition: all 0.15s ease;
+    }
+    .orange-alt-btn:hover:not(:disabled) {
+      background: #ffeedd;
+      border-color: var(--ppg-orange);
+    }
+    .orange-alt-btn:active:not(:disabled) { transform: scale(0.98); }
+
+    .pregame-icon-btn,
+    .aux-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1.5px solid #d2dec9;
+      color: var(--ppg-green-dark);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .pregame-icon-btn:hover,
+    .aux-icon-btn:hover {
+      background: var(--ppg-green-soft);
+      border-color: var(--ppg-green);
+      transform: translateY(-1px);
+    }
+    .pregame-icon-btn:active,
+    .aux-icon-btn:active { transform: scale(0.96); }
+
+    .btn-ranking-icon svg { stroke: var(--ppg-green); }
+    .btn-back-icon svg { stroke: var(--ink-700); }
+
+    /* =========================================================================
+       DOCKS INFERIORES UNIFICADOS NAS TELAS PRÉ-JOGO
+       Esquerda: 2 Modos empilhados
+       Direita:  2 Ícones empilhados (Ranking no topo, Voltar embaixo)
+       ========================================================================= */
+    .pregame-bottom-dock,
+    .terms-bottom-dock {
+      display: grid;
+      grid-template-columns: 1fr 44px;
+      gap: 8px 10px;
+      width: 100%;
+      margin-top: auto;
+      flex-shrink: 0;
+      padding-top: 8px;
+      box-sizing: border-box;
+    }
+    .pregame-modes-col,
+    .terms-modes-column {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      min-width: 0;
+    }
+    .pregame-actions-col,
+    .terms-icons-column {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* =========================================================================
+       GERENCIAMENTO DE TELAS (SCREEN-VIEW)
+       ========================================================================= */
+    .screen-view {
+      display: none !important;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      padding: 10px 14px 14px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      position: relative;
+    }
+    .screen-view.is-active {
+      display: flex !important;
+    }
+
+    /* Regra com especificidade de ID para NUNCA vazar telas inativas no viewport */
+    #screenWelcome:not(.is-active),
+    #screenTerms:not(.is-active),
+    #screenRegister:not(.is-active),
+    #screenArena:not(.is-active),
+    #screenRanking:not(.is-active) {
+      display: none !important;
+    }
+
+    /* =========================================================================
+       MASCOTE APRESENTADOR ("GLOOP") — COMPORTAMENTO DINÂMICO
+       ========================================================================= */
+    .presenter-dock {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px 4px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 15;
+      transition: all 0.25s ease;
+    }
+
+    .presenter-mascot-box {
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #gloopHostCanvas {
+      display: block;
+      width: 110px;
+      height: 105px;
+      cursor: pointer;
+      touch-action: manipulation;
+      filter: drop-shadow(0 6px 14px rgba(0, 102, 41, 0.20));
+      transition: width 0.25s ease, height 0.25s ease;
+    }
+
+    /* Balão de diálogo minimalista (Apenas os diálogos, sem título!) */
+    .presenter-bubble {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1.5px solid var(--ppg-green);
+      border-radius: 16px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 14px rgba(0, 102, 41, 0.10);
+      position: relative;
+    }
+    .presenter-bubble::before {
+      content: '';
+      position: absolute;
+      left: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-right: 9px solid var(--ppg-green);
+    }
+    .presenter-bubble::after {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-right: 8px solid #ffffff;
+    }
+    .presenter-speech-text {
+      font-size: 0.84rem;
+      font-weight: 600;
+      line-height: 1.34;
+      color: var(--ink-900);
+    }
+    .presenter-bubble.is-urgent {
+      border-color: var(--ppg-terracotta);
+      animation: pulseUrgent 0.6s infinite alternate;
+    }
+    @keyframes pulseUrgent { 0% { transform: scale(1); } 100% { transform: scale(1.02); } }
+
+    /* MODO BOAS-VINDAS: Gloop Centralizado e Proporcional */
+    .presenter-dock.mode-welcome {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 14px 0;
+    }
+    .presenter-dock.mode-welcome #gloopHostCanvas {
+      width: 130px !important;
+      height: 120px !important;
+      filter: drop-shadow(0 8px 18px rgba(0, 102, 41, 0.22));
+    }
+    .presenter-dock.mode-welcome .presenter-bubble {
+      display: none !important;
+    }
+
+    /* MODO TERMOS E CADASTRO: Gloop Compacto com Balão de Fala */
+    .presenter-dock.mode-terms,
+    .presenter-dock.mode-register {
+      padding: 6px 12px 2px;
+      gap: 10px;
+    }
+    .presenter-dock.mode-terms #gloopHostCanvas,
+    .presenter-dock.mode-register #gloopHostCanvas {
+      width: 64px !important;
+      height: 60px !important;
+    }
+    .presenter-dock.mode-terms .presenter-bubble,
+    .presenter-dock.mode-register .presenter-bubble {
+      padding: 7px 11px;
+      font-size: 0.80rem;
+    }
+
+    /* MODO ARENA: Gloop no Canto, SEM BALÃO DE DIÁLOGO */
+    .presenter-dock.mode-arena {
+      position: absolute;
+      top: 6px;
+      left: 10px;
+      padding: 0;
+      margin: 0;
+      z-index: 30;
+    }
+    .presenter-dock.mode-arena #gloopHostCanvas {
+      width: 70px !important;
+      height: 66px !important;
+      filter: drop-shadow(0 4px 10px rgba(0, 102, 41, 0.28));
+    }
+    .presenter-dock.mode-arena .presenter-bubble {
+      display: none !important;
+    }
+
+    /* MODO RANKING: Gloop Ocultado para liberar 100% da tela para o Pódio e Lista */
+    .presenter-dock.mode-ranking {
+      display: none !important;
+    }
+
+    /* =========================================================================
+       TELA 0: BOAS-VINDAS (#screenWelcome)
+       ========================================================================= */
+    #screenWelcome {
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 14px 16px;
+    }
+
+    .welcome-card {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      margin-top: -4px;
+    }
+
+    .welcome-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ppg-green-dark);
+      background: var(--ppg-lime-soft);
+      padding: 3px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 139, 56, 0.15);
+    }
+
+    .welcome-title {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: var(--ppg-green-dark);
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+
+    .welcome-lead {
+      font-size: 0.82rem;
+      color: var(--ink-700);
+      line-height: 1.35;
+      max-width: 360px;
+    }
+
+    .welcome-steps-strip {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 8px 0;
+    }
+
+    .welcome-step-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.80);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1px solid #dbe6d6;
+      border-radius: 12px;
+      padding: 7px 12px;
+      text-align: left;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+    .welcome-step-item .step-num-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      background: var(--ppg-green);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 0.76rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .welcome-step-item .step-desc {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.22;
+    }
+    .welcome-step-item .step-desc strong {
+      font-size: 0.80rem;
+      color: var(--ink-900);
+    }
+    .welcome-step-item .step-desc span {
+      font-size: 0.72rem;
+      color: var(--ink-500);
+    }
+
+    /* Botões lado a lado na tela inicial conforme pedido do usuário */
+    .welcome-actions-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .welcome-actions-row .btn-welcome-play {
+      flex: 1.4;
+      padding: 12px 14px;
+      font-size: 0.95rem;
+    }
+    .welcome-actions-row .btn-welcome-rank {
+      flex: 1;
+      padding: 11px 12px;
+      font-size: 0.88rem;
+    }
+
+    /* =========================================================================
+       TELA 1: TERMOS E CONDIÇÕES (#screenTerms)
+       ========================================================================= */
+    #screenTerms {
+      justify-content: flex-start;
+      gap: 8px;
+      padding: 8px 14px 14px;
+    }
+
+    .rules-single-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-left: 4px solid var(--ppg-green);
+      border-radius: 12px;
+      padding: 9px 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      flex-shrink: 0;
+    }
+    .rules-single-icon svg { width: 22px; height: 22px; flex-shrink: 0; }
+    .rules-single-text {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.30;
+      color: var(--ink-900);
+    }
+
+    .terms-card {
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid #dce6d8;
+      border-radius: 16px;
+      padding: 11px 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .terms-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .terms-header h2 {
+      font-size: 0.88rem;
+      font-weight: 800;
+      color: var(--ppg-green-dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lgpd-badge {
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: #925c00;
+      background: #fff4d6;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .terms-scroll-box {
+      font-size: 0.76rem;
+      color: var(--ink-700);
+      line-height: 1.38;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+      padding-right: 4px;
+      flex: 1;
+    }
+
+    .consent-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.77rem;
+      font-weight: 600;
+      line-height: 1.30;
+      color: var(--ink-900);
+      background: var(--ppg-green-soft);
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(0, 139, 56, 0.25);
+      cursor: pointer;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .consent-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--ppg-green);
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    /* =========================================================================
+       TELA 2: CADASTRO / SELFIE (#screenRegister)
+       ========================================================================= */
+    #screenRegister {
+      justify-content: flex-start;
+      gap: 8px;
+      padding: 6px 14px 12px;
+    }
+
+    .mode-switcher {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      flex-shrink: 0;
+    }
+    .mode-switch-btn {
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1.5px solid #d4e0cf;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--ink-700);
+      line-height: 1.25;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .mode-switch-btn.is-active {
+      background: var(--ppg-green-soft);
+      border-color: var(--ppg-green);
+      color: var(--ppg-green-dark);
+      box-shadow: 0 2px 8px rgba(0, 139, 56, 0.15);
+    }
+    .mode-switch-btn.mode-anon.is-active {
+      background: #fff6ee;
+      border-color: var(--ppg-orange);
+      color: #b54e00;
+    }
+
+    .form-card {
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid #dce6d8;
+      border-radius: 16px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    /* 1º Lugar: Local da Foto (Selfie) */
+    .selfie-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      width: 100%;
+      flex-shrink: 0;
+    }
+    .selfie-header-strip {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--ppg-green-dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .camera-viewport {
+      position: relative;
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3.5px solid var(--ppg-green);
+      box-shadow: 0 6px 18px rgba(0, 102, 41, 0.22);
+      background: #000000;
+    }
+    #selfieVideo, #selfiePreviewImg {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    #selfieVideo.is-mirrored { transform: scaleX(-1); }
+
+    .camera-guide-ring {
+      position: absolute;
+      inset: 6px;
+      border: 1.5px dashed rgba(255, 255, 255, 0.55);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .camera-flash {
+      position: absolute;
+      inset: 0;
+      background: #ffffff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+    .camera-flash.is-flashing { opacity: 0.9; }
+
+    .camera-status-msg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      text-align: center;
+      color: #ffffff;
+      font-size: 0.72rem;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.85);
+    }
+
+    .selfie-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .shutter-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--ppg-green);
+      color: #ffffff;
+      font-size: 0.80rem;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 10px;
+      box-shadow: 0 3px 8px rgba(0, 139, 56, 0.25);
+    }
+    .mini-cam-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #f0f4ee;
+      color: var(--ink-700);
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 7px 11px;
+      border-radius: 10px;
+      border: 1px solid #d0dec8;
+    }
+
+    /* 2º Lugar: Campos de Nome e Idade */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+    .form-row.is-age-only {
+      grid-template-columns: 1fr;
+    }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-align: left;
+    }
+    .field-group label {
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: var(--ink-700);
+      letter-spacing: 0.02em;
+    }
+    .field-input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1.5px solid #d2dfcb;
+      background: #ffffff;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink-900);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .field-input:focus {
+      border-color: var(--ppg-green);
+      box-shadow: 0 0 0 3px rgba(0, 139, 56, 0.15);
+    }
+
+    .anon-notice-box {
+      font-size: 0.77rem;
+      line-height: 1.34;
+      color: #9c4b00;
+      background: #fff6ee;
+      border: 1.5px solid #f9caa7;
+      border-radius: 12px;
+      padding: 9px 12px;
+      display: none;
+    }
+
+    /* =========================================================================
+       TELA 3: ARENA DE JOGO COM BALÃO DE PENSAMENTO (#screenArena)
+       100% ENQUADRADO NA TELA — SEM SCROLL!
+       ========================================================================= */
+    #screenArena {
+      position: relative;
+      flex-direction: column;
+      height: 100%;
+      padding: 6px 14px 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      justify-content: flex-start;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    /* Balão de pensamento removido a pedido do usuário */
+
+    /* Caixa da Pergunta (Balão de Pensamento do Gloop — Fixa no topo, sem scroll) */
+    .question-card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 2px solid var(--ppg-green);
+      border-radius: 18px;
+      padding: 12px 14px 11px;
+      margin-top: 42px; /* Espaço para o Chimia no topo-esquerdo */
+      box-shadow: 0 6px 20px rgba(0, 102, 41, 0.12);
+      flex-shrink: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .question-stem {
+      font-size: 0.94rem;
+      font-weight: 800;
+      line-height: 1.34;
+      color: var(--ink-900);
+      letter-spacing: -0.01em;
+    }
+
+    /* As 4 Alternativas — Única área que rola independentemente quando necessário */
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding: 2px 4px 76px 4px; /* 4px de respiro lateral para bordas e sombras não cortarem */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 139, 56, 0.25) transparent;
+    }
+    .options-list::-webkit-scrollbar { width: 4px; }
+    .options-list::-webkit-scrollbar-track { background: transparent; }
+    .options-list::-webkit-scrollbar-thumb { background: rgba(0, 139, 56, 0.25); border-radius: 4px; }
+
+    .option-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 10px 14px;
+      min-height: 48px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1.5px solid #d8e5d2;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+      margin: 0;
+      flex-shrink: 0;
+    }
+    .option-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: var(--ppg-green);
+      transform: translateY(-1px);
+    }
+    .option-btn:active:not(:disabled) { transform: scale(0.99); }
+
+    .option-letter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      background: var(--ppg-lime-soft);
+      color: var(--ppg-green-dark);
+      font-weight: 800;
+      font-size: 0.88rem;
+    }
+
+    .option-text {
+      font-size: 0.84rem;
+      font-weight: 600;
+      line-height: 1.28;
+      color: var(--ink-900);
+      flex: 1 1 auto;
+      min-width: 0;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      hyphens: auto;
+    }
+
+    .option-btn.is-correct {
+      background: #eaf8ee !important;
+      border-color: var(--ppg-green) !important;
+      color: var(--ppg-green-dark) !important;
+      box-shadow: 0 0 0 1.5px var(--ppg-green) !important;
+    }
+    .option-btn.is-correct .option-letter {
+      background: var(--ppg-green) !important;
+      color: #ffffff !important;
+    }
+
+    .option-btn.is-wrong {
+      background: #fdf2ef !important;
+      border-color: var(--ppg-terracotta) !important;
+      color: #a3220a !important;
+    }
+    .option-btn.is-wrong .option-letter {
+      background: var(--ppg-terracotta) !important;
+      color: #ffffff !important;
+    }
+
+    .option-btn.is-dimmed {
+      opacity: 0.50;
+    }
+
+    /* Gaveta de Feedback Pós-Resposta */
+    .feedback-drawer {
+      position: absolute;
+      bottom: 54px;
+      left: 10px;
+      right: 10px;
+      z-index: 50;
+      background: #ffffff;
+      border: 2px solid var(--ppg-green);
+      border-radius: 16px;
+      padding: 10px 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      display: none;
+      flex-direction: column;
+      gap: 7px;
+      animation: popFeedback 0.22s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+    }
+    @keyframes popFeedback {
+      0% { opacity: 0; transform: translateY(12px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .feedback-drawer.is-visible { display: flex !important; }
+    .feedback-drawer.is-wrong-fb { border-color: var(--ppg-terracotta); }
+
+    .feedback-headline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+    .feedback-headline svg.icon-svg {
+      width: 20px;
+      height: 20px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+    .feedback-drawer:not(.is-wrong-fb) .feedback-headline { color: var(--ppg-green-dark); }
+    .feedback-drawer.is-wrong-fb .feedback-headline { color: #a3220a; }
+
+    .feedback-explanation {
+      font-size: 0.77rem;
+      color: var(--ink-700);
+      line-height: 1.34;
+      max-height: 75px;
+      overflow-y: auto;
+    }
+
+    .btn-next-question {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 0.90rem;
+    }
+
+    /* Barra Fixa Inferior: 7 Pips + Timer Discreto */
+    .arena-fixed-bottom-dock {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 35;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      padding: 7px 14px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .challenger-streak-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 900;
+      color: #925c00;
+      background: #fff5db;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    body.is-challenger-mode .challenger-streak-banner { display: flex !important; }
+
+    .progression-strip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
+      height: 6px;
+    }
+    .prog-pip {
+      flex: 1;
+      height: 6px;
+      border-radius: 4px;
+      background: #d8e5d2;
+      transition: all 0.20s ease;
+    }
+    .prog-pip.is-current {
+      background: var(--ppg-yellow);
+      box-shadow: 0 0 8px rgba(255, 208, 0, 0.85);
+      transform: scaleY(1.3);
+    }
+    .prog-pip.is-correct { background: var(--ppg-green); }
+    .prog-pip.is-wrong { background: var(--ppg-terracotta); }
+
+    .discreet-timer-dock {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .timer-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #556052;
+      line-height: 1;
+      padding: 0 1px;
+    }
+    .timer-info-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.85;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .timer-seconds-badge {
+      font-variant-numeric: tabular-nums;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #234d20;
+      background: rgba(46, 125, 50, 0.10);
+      padding: 1px 6px;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+      transition: color 0.3s ease, background 0.3s ease;
+    }
+    .timer-seconds-badge.is-warn {
+      color: #c95100;
+      background: rgba(230, 81, 0, 0.12);
+    }
+    .timer-seconds-badge.is-danger {
+      color: #d32f2f;
+      background: rgba(211, 47, 47, 0.15);
+      animation: pulseDanger 0.8s infinite alternate;
+    }
+    .timer-bar-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+    .timer-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--ppg-green), var(--ppg-lime));
+      border-radius: 999px;
+      transition: width 0.08s linear, background 0.3s ease;
+      will-change: width;
+    }
+    .timer-bar-fill.is-warn { background: linear-gradient(90deg, var(--ppg-orange), var(--ppg-yellow)); }
+    .timer-bar-fill.is-danger {
+      background: linear-gradient(90deg, var(--ppg-terracotta), #ff3b30);
+      animation: pulseDanger 0.8s infinite alternate;
+    }
+    @keyframes pulseDanger { 0% { opacity: 0.8; } 100% { opacity: 1; filter: brightness(1.2); } }
+
+    /* =========================================================================
+       TELA 4: RESULTADO FINAL & RANKING (#screenRanking)
+       ========================================================================= */
+    #screenRanking {
+      justify-content: flex-start;
+      gap: 8px;
+      padding: 6px 12px 14px;
+    }
+
+    .result-summary-card {
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1.5px solid var(--ppg-green);
+      border-radius: 16px;
+      padding: 10px 12px;
+      box-shadow: 0 4px 14px rgba(0, 102, 41, 0.10);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .result-summary-card.is-anon-result { border-color: #f7a256; }
+
+    .result-top-flex {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .result-selfie {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2.5px solid var(--ppg-green);
+      flex-shrink: 0;
+    }
+    .result-player-info h2 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--ppg-green-dark);
+      line-height: 1.2;
+    }
+    .result-badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.70rem;
+      font-weight: 800;
+      background: var(--ppg-lime-soft);
+      color: var(--ppg-green-dark);
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-top: 2px;
+    }
+
+    .result-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      gap: 6px;
+      width: 100%;
+    }
+    .metric-box {
+      background: #f6faf4;
+      border: 1px solid #dce8d8;
+      border-radius: 10px;
+      padding: 6px 4px;
+      text-align: center;
+    }
+    .metric-box .m-val {
+      font-size: 0.92rem;
+      font-weight: 900;
+      color: var(--ppg-green-dark);
+      display: block;
+    }
+    .metric-box .m-lbl {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--ink-500);
+      text-transform: uppercase;
+    }
+
+    /* Pódio e Tabela de Líderes */
+    .ranking-section {
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid #dce6d8;
+      border-radius: 16px;
+      padding: 10px 12px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .ranking-header-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .ranking-header-bar h3 {
+      font-size: 0.86rem;
+      font-weight: 800;
+      color: var(--ppg-green-dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      width: 100%;
+    }
+    .filter-tab-btn {
+      padding: 5px 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border-radius: 8px;
+      background: #f0f5ee;
+      color: var(--ink-700);
+      border: 1px solid #d6e2d2;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .filter-tab-btn.is-active {
+      background: var(--ppg-green);
+      color: #ffffff;
+      border-color: var(--ppg-green);
+    }
+
+    .podium-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr 1fr;
+      gap: 6px;
+      align-items: flex-end;
+      padding: 8px 4px 4px;
+      flex-shrink: 0;
+    }
+    .podium-spot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: #f7faf5;
+      border: 1.5px solid #dce6d8;
+      border-radius: 12px;
+      padding: 8px 4px 6px;
+    }
+    .podium-spot.rank-1 {
+      border-color: #ffd000;
+      background: #fffdf0;
+      box-shadow: 0 4px 12px rgba(255, 208, 0, 0.20);
+      transform: translateY(-4px);
+    }
+    .podium-spot.rank-2 { border-color: #bbc576; }
+    .podium-spot.rank-3 { border-color: #f37e00; }
+
+    .podium-medal {
+      font-size: 0.76rem;
+      font-weight: 900;
+      padding: 1px 7px;
+      border-radius: 6px;
+      margin-bottom: 4px;
+    }
+    .rank-1 .podium-medal { background: #ffd000; color: #7a5400; }
+    .rank-2 .podium-medal { background: #dce4d0; color: #4e5e40; }
+    .rank-3 .podium-medal { background: #fde6d2; color: #9c4b00; }
+
+    .podium-avatar-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      cursor: pointer;
+    }
+    .rank-1 .podium-avatar-wrap { width: 52px; height: 52px; border-color: #ffd000; }
+    .podium-avatar { width: 100%; height: 100%; object-fit: cover; }
+
+    .podium-name {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--ink-900);
+      margin-top: 4px;
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .podium-score {
+      font-size: 0.68rem;
+      font-weight: 800;
+      color: var(--ppg-green-dark);
+    }
+    .podium-time { font-size: 0.62rem; color: var(--ink-500); }
+
+    .leaderboard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow-y: auto;
+      flex: 1;
+      padding-right: 2px;
+    }
+    .lb-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: #fbfdfa;
+      border: 1px solid #e2ede0;
+    }
+    .lb-row.is-me {
+      background: var(--ppg-green-soft);
+      border-color: var(--ppg-green);
+    }
+    .lb-pos {
+      font-size: 0.74rem;
+      font-weight: 900;
+      color: var(--ink-500);
+      width: 22px;
+      flex-shrink: 0;
+    }
+    .lb-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--ppg-green);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .lb-main {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.20;
+      flex: 1;
+      min-width: 0;
+    }
+    .lb-name {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--ink-900);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lb-sub {
+      font-size: 0.66rem;
+      color: var(--ink-500);
+    }
+    .lb-stats-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.20;
+      flex-shrink: 0;
+    }
+    .lb-correct { font-size: 0.74rem; font-weight: 800; color: var(--ppg-green-dark); }
+    .lb-time { font-size: 0.64rem; color: var(--ink-500); }
+
+    /* Banner do Modo Desenvolvedor / Moderação */
+    .dev-mode-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #1f2937, #111827);
+      border: 1.5px solid var(--ppg-orange);
+      border-radius: 12px;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      animation: fadeInDev 0.3s ease;
+      flex-shrink: 0;
+    }
+    @keyframes fadeInDev { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .dev-banner-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .dev-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: var(--ppg-orange);
+      text-transform: uppercase;
+    }
+    .dev-banner-text {
+      font-size: 0.70rem;
+      color: #d1d5db;
+    }
+    .dev-exit-btn {
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      border-radius: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+    .dev-exit-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    /* Botões de exclusão em modo desenvolvedor */
+    .btn-dev-delete-row {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1.5px solid rgba(239, 68, 68, 0.4);
+      color: #dc2626;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-left: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-dev-delete-row:hover, .btn-dev-delete-row:active {
+      background: #dc2626;
+      color: #ffffff;
+      transform: scale(1.08);
+    }
+    .btn-dev-delete-row svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-dev-delete-podium {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 8px;
+      font-size: 0.66rem;
+      font-weight: 800;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #dc2626;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 5px;
+      transition: all 0.2s ease;
+    }
+    .btn-dev-delete-podium:hover, .btn-dev-delete-podium:active {
+      background: #dc2626;
+      color: #ffffff;
+      transform: scale(1.06);
+    }
+
+    /* Modais */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 990;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.is-open { display: flex !important; }
+    .modal-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 18px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: popFeedback 0.22s ease-out;
+    }
+    .challenger-modal-card {
+      background: linear-gradient(135deg, #1f0b04 0%, #3d1405 100%);
+      color: #ffffff;
+      border: 2px solid var(--ppg-yellow);
+      text-align: center;
+      align-items: center;
+    }
+    .challenger-btn {
+      background: linear-gradient(135deg, var(--ppg-orange), var(--ppg-yellow));
+      color: #1a1a18;
+      font-weight: 900;
+      font-size: 0.95rem;
+      padding: 12px 18px;
+      border-radius: 12px;
+      width: 100%;
+      box-shadow: 0 6px 18px rgba(243, 126, 0, 0.45);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confettiCanvas"></canvas>
+
+  <!-- BACKGROUND NÃO-ESTÁTICO PPGDTSA: Aurora + Rede de Esferas -->
+  <div class="ppgdtsa-live-bg" aria-hidden="true">
+    <div class="aurora-blob b1"></div>
+    <div class="aurora-blob b2"></div>
+    <div class="aurora-blob b3"></div>
+    <canvas id="ppgdtsaNetworkCanvas"></canvas>
+  </div>
+
+  <main class="app-viewport">
+    <section class="quiz-stage" id="quizStage">
+
+      <!-- ===================================================================
+           BARRA INSTITUCIONAL CENTRALIZADA NO TOPO (NUNCA SOBREPÕE CONTEÚDO!)
+           =================================================================== -->
+      <header class="stage-brand-dock" aria-label="Logotipos Institucionais">
+        <img src="./assets/ufpel_logo.png" alt="UFPel" class="logo-ufpel" draggable="false" />
+        <img src="./assets/dcsa_logo.png" alt="DCSA" class="logo-dcsa" draggable="false" />
+        <img src="./assets/ppgdtsa_tree.png" alt="PPGDTSA" class="logo-ppgdtsa" id="logoPpgdtsaTree" title="PPGDTSA / UFPel" draggable="false" />
+      </header>
+
+      <!-- ===================================================================
+           PALCO DO MASCOTE APRESENTADOR ("GLOOP")
+           Grande e centralizado em Boas-Vindas; no canto e SEM balão durante Arena!
+           =================================================================== -->
+      <section class="presenter-dock mode-welcome" id="presenterDock" aria-live="polite">
+        <div class="presenter-mascot-box">
+          <canvas id="gloopHostCanvas" width="320" height="305" title="Toque no Chimia para interagir!"></canvas>
+        </div>
+
+        <div class="presenter-bubble" id="presenterBubble">
+          <p class="presenter-speech-text" id="presenterSpeechText">
+            Olá, você chegou ao lugar certo! Eu sou o <strong>Chimia</strong>, serei o mediador da competição de perguntas e respostas. Teste seus conhecimentos sobre o nosso território, agroecologia, cultura e sistemas agroindustriais.
+          </p>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TELA 0: BOAS-VINDAS (#screenWelcome)
+           =================================================================== -->
+      <div class="screen-view is-active" id="screenWelcome">
+        <div class="welcome-card">
+          <div class="welcome-tag">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+            Rua da Ciência • PPGDTSA / UFPel
+          </div>
+          <h1 class="welcome-title">Olá, você chegou ao lugar certo!</h1>
+          <p class="welcome-lead">
+            Eu sou o <strong>Chimia</strong>, serei o mediador da competição de perguntas e respostas. Teste seus conhecimentos sobre o nosso território, agroecologia, cultura e sistemas agroindustriais.
+          </p>
+
+          <div class="welcome-steps-strip">
+            <div class="welcome-step-item">
+              <span class="step-num-badge">1</span>
+              <div class="step-desc">
+                <strong>7 Perguntas Rápidas</strong>
+                <span>Perguntas preparadas para desafiar seus conhecimentos.</span>
+              </div>
+            </div>
+
+            <div class="welcome-step-item">
+              <span class="step-num-badge">2</span>
+              <div class="step-desc">
+                <strong>Modo Desafiante</strong>
+                <span>Acerte todas as 7 perguntas base e entre no modo Desafiante e jogue até errar para dominar o ranking!</span>
+              </div>
+            </div>
+
+            <div class="welcome-step-item">
+              <span class="step-num-badge">3</span>
+              <div class="step-desc">
+                <strong>Ranking ao Vivo ou Jogo Casual</strong>
+                <span>Tire uma selfie na hora para disputar o pódio oficial ou jogue casualmente sem cadastro!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botões lado a lado na tela inicial conforme pedido do usuário -->
+        <div class="welcome-actions-row">
+          <button type="button" class="primary-btn btn-welcome-play" id="btnWelcomePlay">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            <span>Jogar</span>
+          </button>
+          <button type="button" class="secondary-btn btn-welcome-rank" id="btnViewRankingFromWelcome">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            <span>Ver Ranking</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           TELA 1: TERMOS E CONDIÇÕES (#screenTerms)
+           =================================================================== -->
+      <div class="screen-view" id="screenTerms">
+        <div class="rules-single-banner">
+          <span class="rules-single-icon">
+            <svg class="icon-svg icon-lg" viewBox="0 0 24 24" fill="none" stroke="var(--ppg-green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </span>
+          <p class="rules-single-text">
+            Acerte todas as sete primeiras questões para entrar no <strong>Modo Desafiante</strong> e entre para o <strong>Ranking</strong>!
+          </p>
+        </div>
+
+        <div class="terms-card">
+          <div class="terms-header">
+            <h2>
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              Termos para Participar do Ranking
+            </h2>
+            <span class="lgpd-badge">LGPD • Uso de Imagem</span>
+          </div>
+
+          <div class="terms-scroll-box">
+            <p><strong>1. Divulgação Científica (PPGDTSA / DCSA / UFPel):</strong> Atividade educativa e recreativa integrante da <strong>Rua da Ciência</strong>.</p>
+            <p><strong>2. Selfie ao Vivo:</strong> Para disputar o Ranking Oficial, a selfie é tirada <strong>ao vivo pela câmera</strong> e exibida junto ao seu <strong>nome, idade, acertos e tempo</strong> no placar.</p>
+            <p><strong>3. Opção Casual (Sem Ranking):</strong> Caso prefira não tirar foto, você pode jogar normalmente no modo <strong>Casual</strong> (sem informar nome e sem figurar no Ranking).</p>
+            <p><strong>4. LGPD (Lei nº 13.709/2018):</strong> Dados usados exclusivamente no placar do evento, podendo a remoção ser solicitada a qualquer momento.</p>
+          </div>
+
+          <label class="consent-label" for="chkAcceptTerms">
+            <input type="checkbox" id="chkAcceptTerms" />
+            <span>Li e concordo com os Termos e autorizo o uso da minha selfie ao vivo e do meu nome no Ranking Oficial.</span>
+          </label>
+        </div>
+
+        <!-- Dock inferior unificado: 2 modos à esquerda, Ranking e Voltar à direita -->
+        <div class="terms-bottom-dock">
+          <div class="terms-modes-column">
+            <button type="button" class="primary-btn btn-mode-ranked" id="btnProceedRanked" disabled>
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              <span>Competir no Ranking (Selfie)</span>
+            </button>
+            <button type="button" class="orange-alt-btn btn-mode-casual" id="btnProceedAnonymous">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Jogar Casualmente (Sem Selfie)</span>
+            </button>
+          </div>
+          <div class="terms-icons-column">
+            <button type="button" class="aux-icon-btn btn-ranking-icon" id="btnViewRankingFromHome" title="Ver Ranking ao Vivo" aria-label="Ver Ranking ao Vivo">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            </button>
+            <button type="button" class="aux-icon-btn btn-back-icon" id="btnBackToWelcome" title="Voltar ao Início" aria-label="Voltar ao Início">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           TELA 2: CADASTRO / SELFIE (#screenRegister)
+           =================================================================== -->
+      <div class="screen-view" id="screenRegister">
+        <div class="mode-switcher" role="tablist">
+          <button type="button" class="mode-switch-btn is-active" id="tabModeRanked">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            Valendo Ranking<br /><small style="font-weight:700; opacity:0.85;">Com Selfie + Nome</small>
+          </button>
+          <button type="button" class="mode-switch-btn mode-anon" id="tabModeAnon">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Jogar Casualmente<br /><small style="font-weight:700; opacity:0.85;">Sem Selfie • Sem Ranking</small>
+          </button>
+        </div>
+
+        <div class="form-card">
+          <!-- 1º Lugar: Local da Foto (Selfie) -->
+          <div class="selfie-box" id="selfieBox">
+            <div class="selfie-header-strip">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              <span>Tire sua Selfie ao Vivo</span>
+            </div>
+
+            <div class="camera-viewport">
+              <video id="selfieVideo" class="is-mirrored" autoplay playsinline muted></video>
+              <img id="selfiePreviewImg" alt="Sua Selfie Capturada" />
+              <div class="camera-guide-ring" id="cameraGuideRing"></div>
+              <div class="camera-flash" id="cameraFlash"></div>
+              <div class="camera-status-msg" id="cameraStatusMsg">
+                <span>Inicializando câmera...</span>
+                <small>Permita o acesso à câmera para continuar.</small>
+              </div>
+            </div>
+
+            <div class="selfie-controls">
+              <button type="button" class="shutter-btn" id="btnTakeSelfie">
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                Tirar Selfie Agora
+              </button>
+              <button type="button" class="mini-cam-btn" id="btnRetakeSelfie" style="display:none;">
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Tirar Outra
+              </button>
+              <button type="button" class="mini-cam-btn" id="btnSwitchCamera" title="Alternar Câmera">
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 1.944.694 3.727 1.855 5.111L4 18h5v-5l-1.745 1.745A5.98 5.98 0 0 1 6 10c0-3.314 2.686-6 6-6s6 2.686 6 6c0 1.488-.542 2.85-1.444 3.9L18 15.344C19.243 13.882 20 12.029 20 10z"/></svg>
+                Virar
+              </button>
+            </div>
+          </div>
+
+          <!-- 2º Lugar: Campos de Nome e Idade -->
+          <div class="form-row" id="registerFieldsRow">
+            <div class="field-group" id="nameFieldGroup">
+              <label for="inputPlayerName">Seu Nome ou Apelido *</label>
+              <input type="text" id="inputPlayerName" class="field-input" placeholder="Ex.: Ana Carolina" maxlength="40" autocomplete="off" />
+            </div>
+
+            <div class="field-group">
+              <label for="inputPlayerAge">Sua Idade *</label>
+              <input type="number" id="inputPlayerAge" class="field-input" placeholder="Ex.: 15" min="5" max="110" inputmode="numeric" />
+            </div>
+          </div>
+
+          <label class="consent-label" id="inlineTermsConsentWrap" for="chkInlineTerms" style="display:none;">
+            <input type="checkbox" id="chkInlineTerms" />
+            <span>Aceito os Termos e autorizo o uso da minha selfie ao vivo e nome no Ranking da Rua da Ciência.</span>
+          </label>
+
+          <div class="anon-notice-box" id="anonNoticeBox">
+            <strong>Modo Casual ativado:</strong> Sem selfie e sem ranking. Digite sua idade se quiser personalizar a experiência (Liga Marreco ou Liga Ganso), ou jogue direto!
+          </div>
+        </div>
+
+        <!-- Dock inferior unificado: 2 botões à esquerda, 2 ícones à direita -->
+        <div class="pregame-bottom-dock">
+          <div class="pregame-modes-col">
+            <button type="button" class="primary-btn pregame-btn-primary" id="btnStartQuizGame">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+              <span>Iniciar Quiz</span>
+            </button>
+            <button type="button" class="secondary-btn pregame-btn-secondary" id="btnSwitchRegisterMode">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+              <span id="lblSwitchRegisterMode">Mudar para Modo Casual</span>
+            </button>
+          </div>
+          <div class="pregame-actions-col">
+            <button type="button" class="pregame-icon-btn btn-ranking-icon" id="btnViewRankingFromRegister" title="Ver Ranking ao Vivo" aria-label="Ver Ranking ao Vivo">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            </button>
+            <button type="button" class="pregame-icon-btn btn-back-icon" id="btnBackToTerms" title="Voltar aos Termos" aria-label="Voltar aos Termos">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           TELA 3: ARENA DE JOGO (#screenArena)
+           Enquadramento perfeito 100% sem rolagem!
+           =================================================================== -->
+      <div class="screen-view" id="screenArena">
+
+
+        <!-- Caixa da Pergunta como Balão de Pensamento do Gloop (Fixa no topo) -->
+        <article class="question-card" aria-live="polite">
+          <h2 class="question-stem" id="questionStem">Carregando pergunta...</h2>
+        </article>
+
+        <!-- As 4 Alternativas -->
+        <div class="options-list" id="optionsList"></div>
+
+        <!-- Gaveta de Feedback Pós-Resposta -->
+        <div class="feedback-drawer" id="feedbackDrawer">
+          <div class="feedback-headline">
+            <span id="feedbackTitle"></span>
+            <span id="feedbackTimeTaken" style="font-size:0.75rem; opacity:0.85;"></span>
+          </div>
+          <div class="feedback-explanation" id="feedbackExplanation"></div>
+          <button type="button" class="primary-btn btn-next-question" id="btnNextQuestion">
+            <span>Próxima Pergunta</span>
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+
+        <!-- Barra Fixa Inferior: Pips e Timer Discreto -->
+        <div class="arena-fixed-bottom-dock">
+          <div class="challenger-streak-banner" id="challengerStreakBanner">
+            <span><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> MODO DESAFIANTE</span>
+            <span id="challengerProgressLabel">Questão 8 / 66</span>
+          </div>
+          <div class="progression-strip" id="baseProgressionStrip"></div>
+          <div class="discreet-timer-dock" aria-label="Tempo da Pergunta">
+            <div class="timer-info-row">
+              <span class="timer-info-label" id="timerInfoLabel">
+                <svg class="icon-svg" style="width:12px;height:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Tempo Restante
+              </span>
+              <span class="timer-seconds-badge" id="timerSecondsBadge">--.-s</span>
+            </div>
+            <div class="timer-bar-track">
+              <div class="timer-bar-fill" id="timerBarFill" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           TELA 4: RESULTADO FINAL & RANKING (#screenRanking)
+           =================================================================== -->
+      <div class="screen-view" id="screenRanking">
+        <!-- Banner de Moderação (Modo Desenvolvedor) -->
+        <div class="dev-mode-banner" id="devModeBanner" style="display:none;">
+          <div class="dev-banner-left">
+            <span class="dev-badge"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> MODO MODERADOR</span>
+            <span class="dev-banner-text">Toque em 🗑️ para excluir registros do ranking</span>
+          </div>
+          <button type="button" class="dev-exit-btn" id="btnExitDevMode">Sair</button>
+        </div>
+
+        <div class="result-summary-card" id="playerResultCard" style="display:none;">
+          <div class="result-top-flex">
+            <img src="./assets/ppgdtsa_tree.png" alt="Avatar" class="result-selfie" id="resultSelfieImg" />
+            <div class="result-player-info">
+              <h2 id="resultHeadline">Parabéns!</h2>
+              <p id="resultSubline" style="font-size:0.76rem; opacity:0.90; margin-top:2px;"></p>
+              <span class="result-badge-pill" id="resultBadgePill">
+                <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                Participante
+              </span>
+            </div>
+          </div>
+
+          <div class="result-metrics-grid">
+            <div class="metric-box">
+              <span class="m-val" id="resMetricCorrect">0</span>
+              <span class="m-lbl">Acertos</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-val" id="resMetricTime">0.0s</span>
+              <span class="m-lbl">Tempo Total</span>
+            </div>
+            <div class="metric-box">
+              <span class="m-val" id="resMetricRank">#-</span>
+              <span class="m-lbl" id="resMetricRankLabel">Sua Posição</span>
+            </div>
+          </div>
+
+          <div class="result-replay-box" id="resultReplayBox" style="margin-top:6px; width:100%; display:none;">
+            <button type="button" class="primary-btn btn-replay-same" id="btnResultReplaySame" style="width:100%; justify-content:center; padding:10px 12px; font-size:0.88rem;">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              <span id="lblResultReplaySame">Jogar Novamente para Melhorar no Ranking!</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="ranking-section">
+          <div class="ranking-header-bar">
+            <h3>
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+              Ranking Oficial (Com Selfie)
+            </h3>
+            <div class="filter-tabs" role="tablist">
+              <button type="button" class="filter-tab-btn is-active" data-filter="all">Geral</button>
+              <button type="button" class="filter-tab-btn" data-filter="challenger">Desafiantes</button>
+              <button type="button" class="filter-tab-btn" data-filter="jovem">Liga Marreco</button>
+              <button type="button" class="filter-tab-btn" data-filter="adulto">Liga Ganso</button>
+            </div>
+          </div>
+
+          <div class="podium-grid" id="podiumGrid"></div>
+          <div class="leaderboard-list" id="leaderboardList"></div>
+        </div>
+
+        <!-- Ações do Rodapé do Ranking -->
+        <div style="display:flex; gap:8px; width:100%; margin-top:auto; flex-shrink:0;">
+          <button type="button" class="primary-btn" id="btnPlayAgainSamePlayer" style="display:none; flex:1.4;">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span id="lblPlayAgainDock">Jogar Novamente</span>
+          </button>
+          <button type="button" class="secondary-btn" id="btnPlayAgainNewPlayer" style="flex:1;">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Novo Jogador
+          </button>
+          <button type="button" class="secondary-btn" id="btnToggleTvMode" style="width:auto; padding:10px 14px;">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Telão
+          </button>
+          <button type="button" class="aux-icon-btn btn-back-icon" id="btnRankingBackHome" title="Voltar ao Início" aria-label="Voltar ao Início" style="width:44px; height:44px; flex-shrink:0;">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: DESBLOQUEIO MODO DESAFIANTE -->
+  <div class="modal-backdrop" id="modalChallengerUnlock">
+    <div class="modal-card challenger-modal-card">
+      <div style="font-size:0.75rem; font-weight:800; letter-spacing:0.06em; color:var(--ppg-yellow);">7 DE 7 ACERTOS PERFEITOS!</div>
+      <h2 style="font-size:1.30rem; font-weight:900; line-height:1.2;">MODO DESAFIANTE DESBLOQUEADO!</h2>
+      <p style="font-size:0.82rem; line-height:1.38; color:rgba(255,255,255,0.92);">
+        Você gabaritou o Quiz Base! Agora começa a <strong>Morte Súbita</strong>: o Gloop vai mandar perguntas sem parar e só acaba quando errar uma — ou chegar ao limite máximo das <strong>66 questões</strong>!
+      </p>
+      <div style="background:rgba(0,0,0,0.35); border-radius:12px; padding:8px 12px; width:100%; font-size:0.78rem;">
+        ⏱️ Tempo acumulado: <strong id="challengerUnlockTime" style="color:var(--ppg-yellow);">0.0s</strong>
+      </div>
+      <button type="button" class="challenger-btn" id="btnEnterChallengerNow">
+        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        ENCARAR O MODO DESAFIANTE!
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURAÇÃO SUPABASE -->
+  <div class="modal-backdrop" id="modalSupabaseConfig">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:0.98rem; font-weight:800; display:flex; align-items:center; gap:8px;">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Conexão Supabase
+        </h3>
+        <button type="button" class="mini-cam-btn" id="btnCloseDbConfig">Fechar</button>
+      </div>
+      <p style="font-size:0.76rem; color:var(--ink-700); line-height:1.35;">
+        Insira as credenciais do Supabase para sincronizar o Ranking Oficial e as Selfies.
+      </p>
+      <div class="field-group">
+        <label for="cfgSupabaseUrl">Project URL</label>
+        <input type="url" id="cfgSupabaseUrl" class="field-input" placeholder="https://xxxx.supabase.co" />
+      </div>
+      <div class="field-group">
+        <label for="cfgSupabaseKey">Anon Key</label>
+        <input type="text" id="cfgSupabaseKey" class="field-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." />
+      </div>
+      <div id="cfgFeedbackMsg" style="font-size:0.74rem; font-weight:700; display:none; padding:7px 10px; border-radius:10px;"></div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="primary-btn" id="btnSaveSupabaseConfig" style="padding:10px 14px; font-size:0.82rem;">Salvar e Testar</button>
+        <button type="button" class="secondary-btn" id="btnCopySqlScript" style="padding:10px 12px; font-size:0.76rem;">Copiar SQL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QR CODE -->
+  <div class="modal-backdrop" id="modalQrCode">
+    <div class="modal-card" style="align-items:center; text-align:center;">
+      <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="font-size:0.98rem; font-weight:800;">Acesse o Quiz no Celular</h3>
+        <button type="button" class="mini-cam-btn" id="btnCloseQrModal">✕</button>
+      </div>
+      <p style="font-size:0.78rem; color:var(--ink-700);">Aponte a câmera do celular para entrar no Quiz!</p>
+      <div id="qrCodeMountBox" style="padding:12px; background:#fff; border:2px solid var(--ppg-green); border-radius:18px;"></div>
+      <div id="qrCodeUrlLabel" style="font-family:monospace; font-size:0.72rem; font-weight:700; color:var(--ppg-green-dark); word-break:break-all;"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: ZOOM NA SELFIE -->
+  <div class="modal-backdrop" id="modalPhotoZoom">
+    <div class="modal-card" style="align-items:center; text-align:center; max-width:320px;">
+      <img id="zoomSelfieImg" src="" alt="Selfie" style="width:200px; height:200px; border-radius:50%; object-fit:cover; border:3.5px solid var(--ppg-green); box-shadow:0 8px 24px rgba(0,0,0,0.25);" />
+      <h3 id="zoomSelfieName" style="font-size:1.02rem; font-weight:900;"></h3>
+      <p id="zoomSelfieMeta" style="font-size:0.78rem; font-weight:700; color:var(--ppg-green-dark);"></p>
+      <button type="button" class="secondary-btn" id="btnClosePhotoZoom" style="width:100%; margin-top:4px;">Fechar</button>
+    </div>
+  </div>
+
+  <script src="./data/supabaseConfig.js"></script>
+  <script src="./data/quizQuestions.js"></script>
+  <script type="module">
+    import { JellyAlienMascot } from './jelly-alien-mascot/jelly-alien.js';
+
+    // =======================================================================
+    // 0. BACKGROUND VIVO "ÁRVORE-REDE PPGDTSA" (ESFERAS E CONEXÕES EM MOVIMENTO)
+    // =======================================================================
+    (() => {
+      const bgCanvas = document.getElementById('ppgdtsaNetworkCanvas');
+      const bgCtx = bgCanvas.getContext('2d');
+      const PPG_NODE_COLORS = [
+        '#008b38', // Verde Floresta PPGDTSA
+        '#afca0b', // Verde Lima PPGDTSA
+        '#bbc576', // Verde Sálvia PPGDTSA
+        '#ffd000', // Amarelo Solar PPGDTSA
+        '#f37e00', // Laranja Cítrico PPGDTSA
+        '#d9531e'  // Terracota PPGDTSA
+      ];
+
+      let w = 0;
+      let h = 0;
+      let nodes = [];
+      let spores = [];
+
+      function resizeBg() {
+        w = window.innerWidth;
+        h = window.innerHeight;
+        bgCanvas.width = w;
+        bgCanvas.height = h;
+      }
+
+      function initNodes() {
+        resizeBg();
+        const count = Math.min(34, Math.max(18, Math.floor((w * h) / 28000)));
+        nodes = Array.from({ length: count }, (_, i) => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.65,
+          vy: (Math.random() - 0.5) * 0.65,
+          r: 7 + (i % 5) * 4.2,
+          color: PPG_NODE_COLORS[i % PPG_NODE_COLORS.length],
+          phase: Math.random() * Math.PI * 2
+        }));
+
+        spores = Array.from({ length: 24 }, () => ({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vy: -0.25 - Math.random() * 0.45,
+          vx: (Math.random() - 0.5) * 0.3,
+          r: 1.5 + Math.random() * 2.2,
+          alpha: 0.25 + Math.random() * 0.45
+        }));
+      }
+
+      window.addEventListener('resize', resizeBg);
+      initNodes();
+
+      function animateBg(now) {
+        const t = now * 0.001;
+        const isChallenger = document.body.classList.contains('is-challenger-mode');
+        const speedMult = isChallenger ? 1.85 : 1.0;
+
+        bgCtx.clearRect(0, 0, w, h);
+
+        // Move nós da rede PPGDTSA
+        for (const n of nodes) {
+          n.x += n.vx * speedMult;
+          n.y += n.vy * speedMult;
+          if (n.x < -30) n.x = w + 30;
+          if (n.x > w + 30) n.x = -30;
+          if (n.y < -30) n.y = h + 30;
+          if (n.y > h + 30) n.y = -30;
+        }
+
+        // Desenha conexões orgânicas inspiradas nos ramos da árvore do logo PPGDTSA
+        const maxDist = Math.min(175, Math.max(115, w * 0.18));
+        bgCtx.lineCap = 'round';
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[j].x - nodes[i].x;
+            const dy = nodes[j].y - nodes[i].y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < maxDist) {
+              const alpha = (1 - dist / maxDist) * 0.44;
+              bgCtx.strokeStyle = isChallenger
+                ? `rgba(255, 208, 0, ${alpha.toFixed(3)})`
+                : `rgba(195, 232, 141, ${alpha.toFixed(3)})`;
+              bgCtx.lineWidth = 2.2;
+              bgCtx.beginPath();
+              bgCtx.moveTo(nodes[i].x, nodes[i].y);
+              bgCtx.lineTo(nodes[j].x, nodes[j].y);
+              bgCtx.stroke();
+            }
+          }
+        }
+
+        // Desenha esferas coloridas PPGDTSA com leve pulsação viva
+        for (const n of nodes) {
+          const pulseR = n.r + Math.sin(t * 2.0 + n.phase) * 1.8;
+          bgCtx.save();
+          bgCtx.globalAlpha = 0.58;
+          bgCtx.fillStyle = n.color;
+          bgCtx.beginPath();
+          bgCtx.arc(n.x, n.y, pulseR, 0, Math.PI * 2);
+          bgCtx.fill();
+
+          bgCtx.globalAlpha = 0.28;
+          bgCtx.beginPath();
+          bgCtx.arc(n.x, n.y, pulseR * 1.7, 0, Math.PI * 2);
+          bgCtx.fill();
+          bgCtx.restore();
+        }
+
+        // Partículas luminosas ascendentes
+        for (const s of spores) {
+          s.y += s.vy * speedMult;
+          s.x += s.vx + Math.sin(t + s.y * 0.02) * 0.2;
+          if (s.y < -10) {
+            s.y = h + 10;
+            s.x = Math.random() * w;
+          }
+          bgCtx.fillStyle = isChallenger
+            ? `rgba(255, 208, 0, ${s.alpha})`
+            : `rgba(220, 245, 150, ${s.alpha})`;
+          bgCtx.beginPath();
+          bgCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          bgCtx.fill();
+        }
+
+        requestAnimationFrame(animateBg);
+      }
+      requestAnimationFrame(animateBg);
+    })();
+
+    // =======================================================================
+    // 1. MASCOTE APRESENTADOR "GLOOP" (JELLY ALIEN) + TEMAS PPGDTSA
+    // =======================================================================
+    const GLOOP_PPGDTSA_THEMES = {
+      ppgGreen: {
+        core: 'rgba(232, 250, 175, 0.88)',
+        mid: 'rgba(0, 139, 56, 0.70)',
+        edge: 'rgba(0, 88, 34, 0.86)',
+        rim: '#afca0b',
+        glow: 'rgba(175, 202, 11, 0.36)',
+        irisOuter: '#005722',
+        irisInner: '#ffd000',
+        tint: 'rgba(0, 139, 56, 0.22)'
+      },
+      ppgChallenger: {
+        core: 'rgba(255, 242, 166, 0.90)',
+        mid: 'rgba(243, 126, 0, 0.72)',
+        edge: 'rgba(186, 56, 12, 0.86)',
+        rim: '#ffd000',
+        glow: 'rgba(243, 126, 0, 0.40)',
+        irisOuter: '#7c2d12',
+        irisInner: '#ffd000',
+        tint: 'rgba(243, 126, 0, 0.24)'
+      },
+      ppgOops: {
+        core: 'rgba(255, 218, 198, 0.88)',
+        mid: 'rgba(217, 83, 30, 0.72)',
+        edge: 'rgba(138, 34, 10, 0.86)',
+        rim: '#f37e00',
+        glow: 'rgba(217, 83, 30, 0.34)',
+        irisOuter: '#691b08',
+        irisInner: '#ffd000',
+        tint: 'rgba(217, 83, 30, 0.22)'
+      }
+    };
+
+    const gloopCanvas = document.getElementById('gloopHostCanvas');
+    const presenterDock = document.getElementById('presenterDock');
+    const presenterBubble = document.getElementById('presenterBubble');
+    const presenterSpeechText = document.getElementById('presenterSpeechText');
+    const presenterTitleLabel = document.getElementById('presenterTitleLabel');
+
+    // Conjunto variado e rico de animações ociosas do mascote Gloop
+    const IDLE_ANIM_STATES = ['idle', 'curious', 'happy', 'reading', 'calculating', 'petting_chick'];
+
+    function pickRandomMascotState(excludeCurrent = true) {
+      const cur = (typeof gloopHost !== 'undefined' && gloopHost) ? gloopHost.state : null;
+      const candidates = excludeCurrent && cur ? IDLE_ANIM_STATES.filter(s => s !== cur) : IDLE_ANIM_STATES;
+      return candidates[Math.floor(Math.random() * candidates.length)] || 'idle';
+    }
+
+    const gloopHost = new JellyAlienMascot(gloopCanvas, {
+      state: IDLE_ANIM_STATES[Math.floor(Math.random() * IDLE_ANIM_STATES.length)],
+      squishFactor: 1.05,
+      followCursor: true
+    });
+    gloopHost.setTheme(GLOOP_PPGDTSA_THEMES.ppgGreen);
+
+    let hostIdleCycleTimer = null;
+
+    function hostSay(htmlMessage, animState = null, themeKey = null, urgent = false) {
+      presenterSpeechText.innerHTML = htmlMessage;
+      presenterBubble.classList.toggle('is-urgent', Boolean(urgent));
+      if (themeKey && GLOOP_PPGDTSA_THEMES[themeKey]) {
+        gloopHost.setTheme(GLOOP_PPGDTSA_THEMES[themeKey]);
+      }
+      if (animState) {
+        gloopHost.setState(animState);
+      }
+    }
+
+    // Interação divertida ao tocar/cutucar o Gloop: muda imediatamente de animação aleatória com squish
+    const POKE_QUIPS = [
+      'Hehehe! Faz cócegas no meu gel bioluminescente!',
+      'Bora mostrar quem manda nos Sistemas Agroindustriais!',
+      'Sabia que cada bolinha do fundo tem as cores da árvore do PPGDTSA?',
+      'Capricha na velocidade! No empate, quem responde mais rápido vence!'
+    ];
+    let pokeIdx = 0;
+    gloopCanvas.addEventListener('click', () => {
+      if (!matchState || !matchState.isQuestionActive) {
+        presenterSpeechText.innerHTML = POKE_QUIPS[pokeIdx % POKE_QUIPS.length];
+        pokeIdx += 1;
+        gloopHost.setState(pickRandomMascotState(true));
+        gloopHost.poke();
+      }
+    });
+
+    // Ciclo aleatório contínuo de animações quando ocioso em qualquer tela
+    function startMascotIdleCycle() {
+      stopMascotIdleCycle();
+      hostIdleCycleTimer = setInterval(() => {
+        // Não altera se estiver durante a resposta ativa na arena
+        if (matchState && matchState.isQuestionActive) return;
+        const nextState = pickRandomMascotState(true);
+        gloopHost.setState(nextState);
+      }, 6200);
+    }
+
+    function stopMascotIdleCycle() {
+      if (hostIdleCycleTimer) {
+        clearInterval(hostIdleCycleTimer);
+        hostIdleCycleTimer = null;
+      }
+    }
+
+    const startWelcomeMascotCycle = startMascotIdleCycle;
+    const stopWelcomeMascotCycle = stopMascotIdleCycle;
+
+    // =======================================================================
+    // 2. CONSTANTES, SONS E CONFETES
+    // =======================================================================
+    const BASE_QUIZ_COUNT = 7;
+    const YOUTH_MAX_AGE = 16;   // < 17 anos
+    const TIME_YOUTH_MS = 90000; // 90s (1min 30s) para menores de 17 (Liga Marreco)
+    const TIME_ADULT_MS = 70000; // 70s (1min 10s) para adultos 17+ (Liga Ganso)
+    const LOCAL_STORAGE_RANKING_KEY = 'ppgdtsa_rua_ciencia_quiz_ranking_v1';
+    const LOCAL_STORAGE_SB_CFG_KEY = 'ppgdtsa_rua_ciencia_supabase_cfg_v1';
+
+    const ALL_QUESTIONS = Array.isArray(window.QUIZ_QUESTIONS) ? window.QUIZ_QUESTIONS : [];
+    const MAX_TOTAL_QUESTIONS = ALL_QUESTIONS.length; // 66 questões
+
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!soundEnabled) return null;
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function playTone(freq, durationSec, type = 'sine', gainVal = 0.12, delaySec = 0) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delaySec);
+        gain.gain.setValueAtTime(gainVal, ctx.currentTime + delaySec);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delaySec + durationSec);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delaySec);
+        osc.stop(ctx.currentTime + delaySec + durationSec);
+      } catch (_) {}
+    }
+
+    const sfxShutter = () => { playTone(900, 0.05, 'triangle', 0.15, 0); playTone(1400, 0.07, 'sine', 0.12, 0.05); };
+    const sfxCorrect = () => { playTone(523.25, 0.11, 'sine', 0.14, 0); playTone(659.25, 0.12, 'sine', 0.14, 0.09); playTone(783.99, 0.22, 'triangle', 0.16, 0.18); };
+    const sfxWrong = () => { playTone(260, 0.18, 'sawtooth', 0.11, 0); playTone(195, 0.28, 'sawtooth', 0.12, 0.15); };
+    const sfxChallengerFanfare = () => {
+      playTone(523.25, 0.12, 'triangle', 0.16, 0);
+      playTone(659.25, 0.12, 'triangle', 0.16, 0.10);
+      playTone(783.99, 0.12, 'triangle', 0.16, 0.20);
+      playTone(1046.5, 0.38, 'triangle', 0.20, 0.30);
+    };
+    const sfxTickUrgent = () => playTone(880, 0.04, 'sine', 0.06, 0);
+
+    const confettiCanvas = document.getElementById('confettiCanvas');
+    const confettiCtx = confettiCanvas.getContext('2d');
+    let confettiAnimId = null;
+
+    function launchConfetti(durationMs = 3000) {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+      const colors = ['#008b38', '#afca0b', '#ffd000', '#f37e00', '#d9531e', '#bbc576'];
+      const particles = Array.from({ length: 85 }, () => ({
+        x: Math.random() * confettiCanvas.width,
+        y: -20 - Math.random() * 140,
+        vx: (Math.random() - 0.5) * 5,
+        vy: 2.5 + Math.random() * 4.5,
+        size: 6 + Math.random() * 6,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.2
+      }));
+
+      const start = performance.now();
+      if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+
+      function frame(now) {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vrot;
+          confettiCtx.save();
+          confettiCtx.translate(p.x, p.y);
+          confettiCtx.rotate(p.rot);
+          confettiCtx.fillStyle = p.color;
+          confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+          confettiCtx.restore();
+        }
+        if (now - start < durationMs) {
+          confettiAnimId = requestAnimationFrame(frame);
+        } else {
+          confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        }
+      }
+      confettiAnimId = requestAnimationFrame(frame);
+    }
+
+    // =======================================================================
+    // 3. BANCO DE DADOS SUPABASE + RANKING OTIMIZADO (ANTI-SPAM & INDEX-ONLY)
+    // =======================================================================
+    function getSupabaseCredentials() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramUrl = urlParams.get('sb_url');
+      const paramKey = urlParams.get('sb_key');
+      if (paramUrl && paramKey) {
+        try { localStorage.setItem(LOCAL_STORAGE_SB_CFG_KEY, JSON.stringify({ url: paramUrl.trim(), key: paramKey.trim() })); } catch (_) {}
+      }
+
+      let localCfg = null;
+      try { localCfg = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SB_CFG_KEY) || 'null'); } catch (_) {}
+
+      const fileCfg = window.QUIZ_SUPABASE_CONFIG || {};
+      const url = ((localCfg && localCfg.url) || fileCfg.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+      const key = ((localCfg && localCfg.key) || fileCfg.SUPABASE_PUBLISHABLE_KEY || fileCfg.SUPABASE_ANON_KEY || '').trim();
+      const table = (fileCfg.TABLE_NAME || 'quiz_ranking').trim();
+      const bucket = (fileCfg.STORAGE_BUCKET || 'quiz-selfies').trim();
+
+      return { url, key, table, bucket, isConfigured: Boolean(url && key) };
+    }
+
+    function updateDbStatusBadge() {
+      const { isConfigured } = getSupabaseCredentials();
+      const dot = document.getElementById('dbStatusDot');
+      const lbl = document.getElementById('dbStatusLabel');
+      if (dot) dot.classList.toggle('is-online', isConfigured);
+      if (lbl) lbl.textContent = isConfigured ? 'Supabase' : 'Local/Config';
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const parts = dataUrl.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const binStr = atob(parts[1]);
+      const arr = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) arr[i] = binStr.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    }
+
+    async function uploadSelfieToSupabase(selfieDataUrl) {
+      const { url, key, bucket, isConfigured } = getSupabaseCredentials();
+      if (!isConfigured) return selfieDataUrl;
+      try {
+        const blob = dataUrlToBlob(selfieDataUrl);
+        const fileName = `selfies/selfie_${Date.now()}_${Math.random().toString(36).slice(2, 10)}.jpg`;
+        const res = await fetch(`${url}/storage/v1/object/${bucket}/${fileName}`, {
+          method: 'POST',
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'image/jpeg',
+            'cache-control': '31536000',
+            'x-upsert': 'false'
+          },
+          body: blob
+        });
+        if (res.ok) {
+          return `${url}/storage/v1/object/public/${bucket}/${fileName}`;
+        }
+      } catch (_) {}
+      return selfieDataUrl;
+    }
+
+    function getLocalRankingEntries() {
+      try {
+        const list = JSON.parse(localStorage.getItem(LOCAL_STORAGE_RANKING_KEY) || '[]');
+        return Array.isArray(list) ? list : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function saveLocalRankingEntry(entry) {
+      const list = getLocalRankingEntries();
+      list.push(entry);
+      try { localStorage.setItem(LOCAL_STORAGE_RANKING_KEY, JSON.stringify(list)); } catch (_) {}
+    }
+
+    function sortRankingEntries(entries) {
+      return entries.slice().sort((a, b) => {
+        if (b.correct_count !== a.correct_count) return b.correct_count - a.correct_count;
+        if (a.total_time_ms !== b.total_time_ms) return a.total_time_ms - b.total_time_ms;
+        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      });
+    }
+
+    async function saveScoreToDatabase(record) {
+      saveLocalRankingEntry(record);
+
+      try {
+        fetch('/api/quiz-ranking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        }).catch(() => {});
+      } catch (_) {}
+
+      const { url, key, table, isConfigured } = getSupabaseCredentials();
+      if (!isConfigured) return { source: 'local', entry: record };
+
+      try {
+        const finalSelfieUrl = await uploadSelfieToSupabase(record.selfie_url);
+        const payload = {
+          player_name: record.player_name,
+          player_age: record.player_age,
+          age_group: record.age_group,
+          correct_count: record.correct_count,
+          questions_answered: record.questions_answered,
+          reached_challenger: record.reached_challenger,
+          total_time_ms: record.total_time_ms,
+          selfie_url: finalSelfieUrl,
+          accepted_terms: true
+        };
+
+        const res = await fetch(`${url}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const inserted = await res.json();
+          const row = Array.isArray(inserted) && inserted[0] ? inserted[0] : { ...record, selfie_url: finalSelfieUrl };
+          return { source: 'supabase', entry: row };
+        }
+      } catch (_) {}
+
+      return { source: 'local', entry: record };
+    }
+
+    let rankingFetchPromise = null;
+    let lastRankingFetchTime = 0;
+    const RANKING_CACHE_TTL_MS = 6000;
+
+    async function fetchRankingFromDatabase(force = false) {
+      const now = Date.now();
+      if (!force && cachedRankingList.length > 0 && (now - lastRankingFetchTime) < RANKING_CACHE_TTL_MS) {
+        return cachedRankingList;
+      }
+
+      if (rankingFetchPromise) return rankingFetchPromise;
+
+      rankingFetchPromise = (async () => {
+        try {
+          const { url, key, table, isConfigured } = getSupabaseCredentials();
+          const combinedMap = new Map();
+          let supabaseOk = false;
+
+          if (isConfigured) {
+            try {
+              // Index-Only Scan cobridor com limite de 50 (0.08ms no PostgreSQL)
+              const fields = 'id,player_name,player_age,age_group,correct_count,questions_answered,reached_challenger,total_time_ms,selfie_url,created_at';
+              const query = `${url}/rest/v1/${table}?select=${fields}&order=correct_count.desc,total_time_ms.asc,created_at.asc&limit=50`;
+              const res = await fetch(query, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+              if (res.ok) {
+                const rows = await res.json();
+                if (Array.isArray(rows)) {
+                  supabaseOk = true;
+                  for (const r of rows) {
+                    combinedMap.set(r.id || `${r.player_name}_${r.total_time_ms}_${r.correct_count}`, r);
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (!supabaseOk) {
+            try {
+              const localServerRes = await fetch('/api/quiz-ranking', { cache: 'no-store' });
+              if (localServerRes.ok) {
+                const rows = await localServerRes.json();
+                if (Array.isArray(rows)) {
+                  for (const r of rows) {
+                    const k = r.id || `${r.player_name}_${r.total_time_ms}_${r.correct_count}`;
+                    if (!combinedMap.has(k)) combinedMap.set(k, r);
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          for (const r of getLocalRankingEntries()) {
+            const k = r.id || `${r.player_name}_${r.total_time_ms}_${r.correct_count}`;
+            const dup = Array.from(combinedMap.values()).some(
+              ex => ex.player_name === r.player_name && ex.correct_count === r.correct_count && ex.total_time_ms === r.total_time_ms
+            );
+            if (!combinedMap.has(k) && !dup) combinedMap.set(k, r);
+          }
+
+          lastRankingFetchTime = Date.now();
+          cachedRankingList = sortRankingEntries(Array.from(combinedMap.values()));
+          return cachedRankingList;
+        } finally {
+          rankingFetchPromise = null;
+        }
+      })();
+
+      return rankingFetchPromise;
+    }
+
+    // =======================================================================
+    // 4. EMBARALHAMENTO E SELEÇÃO DE QUESTÕES POR IDADE
+    // =======================================================================
+    function cryptoRandomInt(maxExclusive) {
+      if (maxExclusive <= 1) return 0;
+      if (window.crypto && window.crypto.getRandomValues) {
+        const buf = new Uint32Array(1);
+        window.crypto.getRandomValues(buf);
+        return buf[0] % maxExclusive;
+      }
+      return Math.floor(Math.random() * maxExclusive);
+    }
+
+    function shuffleArray(arr) {
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = cryptoRandomInt(i + 1);
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function buildMatchDeck(playerAge) {
+      const lvl1 = shuffleArray(ALL_QUESTIONS.filter(q => q.nivel === 1));
+      const lvl2 = shuffleArray(ALL_QUESTIONS.filter(q => q.nivel === 2));
+      const lvl3 = shuffleArray(ALL_QUESTIONS.filter(q => q.nivel === 3));
+
+      if (playerAge <= YOUTH_MAX_AGE) {
+        return [...lvl1, ...lvl2, ...lvl3];
+      }
+
+      const usedGroups = new Set();
+      const base7 = [];
+      const restPool = [];
+
+      for (const q of lvl2) {
+        if (base7.length < 4 && !usedGroups.has(q.conceptGroup)) {
+          base7.push(q);
+          usedGroups.add(q.conceptGroup);
+        } else {
+          restPool.push(q);
+        }
+      }
+      for (const q of lvl3) {
+        if (base7.length < BASE_QUIZ_COUNT && !usedGroups.has(q.conceptGroup)) {
+          base7.push(q);
+          usedGroups.add(q.conceptGroup);
+        } else {
+          restPool.push(q);
+        }
+      }
+
+      return [...base7, ...shuffleArray(restPool), ...lvl1];
+    }
+
+    // =======================================================================
+    // 5. CÂMERA AO VIVO (SELFIE SEM GALERIA) + MODO SEM SELFIE (SEM NOME / SEM RANKING)
+    // =======================================================================
+    let isRankedMode = true; // true = Com Selfie + Nome + Ranking | false = Sem Selfie + Sem Nome + Fora do Ranking
+    let mediaStream = null;
+    let currentFacingMode = 'user';
+    let capturedSelfieDataUrl = '';
+
+    const selfieVideo = document.getElementById('selfieVideo');
+    const selfiePreviewImg = document.getElementById('selfiePreviewImg');
+    const cameraStatusMsg = document.getElementById('cameraStatusMsg');
+    const cameraGuideRing = document.getElementById('cameraGuideRing');
+    const cameraFlash = document.getElementById('cameraFlash');
+    const selfieBox = document.getElementById('selfieBox');
+    const btnTakeSelfie = document.getElementById('btnTakeSelfie');
+    const btnRetakeSelfie = document.getElementById('btnRetakeSelfie');
+    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+
+    async function startLiveSelfieCamera() {
+      if (!isRankedMode) return;
+      stopLiveSelfieCamera();
+      cameraStatusMsg.style.display = 'flex';
+      cameraStatusMsg.innerHTML = `
+        <span><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg> Abrindo câmera ao vivo...</span>
+        <small style="opacity:0.85;">Autorize a câmera para tirar sua selfie na hora.</small>
+      `;
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        cameraStatusMsg.innerHTML = `
+          <span><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Câmera requer HTTPS ou localhost</span>
+          <small>Ou toque na aba <b>"Jogar Sem Selfie"</b> acima para jogar fora do ranking!</small>
+        `;
+        return;
+      }
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: currentFacingMode }, width: { ideal: 640 }, height: { ideal: 640 } },
+          audio: false
+        });
+        selfieVideo.srcObject = mediaStream;
+        selfieVideo.classList.toggle('is-mirrored', currentFacingMode === 'user');
+        await selfieVideo.play();
+        cameraStatusMsg.style.display = 'none';
+        selfieVideo.style.display = 'block';
+        selfiePreviewImg.style.display = 'none';
+        cameraGuideRing.style.display = 'block';
+      } catch (_) {
+        cameraStatusMsg.style.display = 'flex';
+        cameraStatusMsg.innerHTML = `
+          <span><svg class="icon-svg icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Permissão de câmera negada</span>
+          <small>Libere a câmera no navegador ou escolha <b>"Jogar Sem Selfie"</b> acima.</small>
+          <button type="button" class="mini-cam-btn" id="btnRetryCam" style="margin-top:6px;"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg> Tentar Novamente</button>
+        `;
+        const retryBtn = document.getElementById('btnRetryCam');
+        if (retryBtn) retryBtn.addEventListener('click', startLiveSelfieCamera);
+      }
+    }
+
+    function stopLiveSelfieCamera() {
+      if (mediaStream) {
+        for (const track of mediaStream.getTracks()) {
+          try { track.stop(); } catch (_) {}
+        }
+        mediaStream = null;
+      }
+    }
+
+    function captureLiveSelfieFrame() {
+      if (!mediaStream || selfieVideo.readyState < 2) {
+        startLiveSelfieCamera();
+        return;
+      }
+
+      sfxShutter();
+      cameraFlash.classList.add('is-flashing');
+      setTimeout(() => cameraFlash.classList.remove('is-flashing'), 220);
+
+      const vw = selfieVideo.videoWidth || 480;
+      const vh = selfieVideo.videoHeight || 480;
+      const side = Math.min(vw, vh);
+      const sx = (vw - side) / 2;
+      const sy = (vh - side) / 2;
+
+      const outSize = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = outSize;
+      canvas.height = outSize;
+      const ctx = canvas.getContext('2d');
+      if (currentFacingMode === 'user') {
+        ctx.translate(outSize, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(selfieVideo, sx, sy, side, side, 0, 0, outSize, outSize);
+      capturedSelfieDataUrl = canvas.toDataURL('image/jpeg', 0.78);
+
+      selfiePreviewImg.src = capturedSelfieDataUrl;
+      selfiePreviewImg.style.display = 'block';
+      selfieVideo.style.display = 'none';
+      cameraGuideRing.style.display = 'none';
+      selfieBox.classList.add('has-photo');
+
+      btnTakeSelfie.style.display = 'none';
+      btnSwitchCamera.style.display = 'none';
+      btnRetakeSelfie.style.display = 'inline-flex';
+
+      stopLiveSelfieCamera();
+      gloopHost.poke();
+      hostSay(
+        '<strong>Uau, ficou show essa selfie!</strong> Se já preencheu seu nome e idade, clique em <strong>Iniciar Quiz</strong>!',
+        'happy',
+        'ppgGreen'
+      );
+      validateRegistrationForm();
+    }
+
+    btnTakeSelfie.addEventListener('click', captureLiveSelfieFrame);
+
+    btnRetakeSelfie.addEventListener('click', () => {
+      capturedSelfieDataUrl = '';
+      selfieBox.classList.remove('has-photo');
+      btnTakeSelfie.style.display = 'inline-flex';
+      btnSwitchCamera.style.display = 'inline-flex';
+      btnRetakeSelfie.style.display = 'none';
+      hostSay('Olha pra câmera e capricha na nova pose!', 'curious', 'ppgGreen');
+      validateRegistrationForm();
+      startLiveSelfieCamera();
+    });
+
+    btnSwitchCamera.addEventListener('click', () => {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      startLiveSelfieCamera();
+    });
+
+    // =======================================================================
+    // 6. NAVEGAÇÃO DE TELAS E CONTROLE DOS MODOS (RANKED vs SEM SELFIE)
+    // =======================================================================
+    const screens = {
+      welcome: document.getElementById('screenWelcome'),
+      terms: document.getElementById('screenTerms'),
+      register: document.getElementById('screenRegister'),
+      arena: document.getElementById('screenArena'),
+      ranking: document.getElementById('screenRanking')
+    };
+
+    function showScreen(screenKey) {
+      // 1. Sempre esconde o drawer de feedback ao mudar de tela
+      const fbDrawer = document.getElementById('feedbackDrawer');
+      if (fbDrawer) {
+        fbDrawer.classList.remove('is-visible');
+        fbDrawer.style.display = 'none';
+      }
+
+      // 2. Garante isolamento estrito: apenas a tela atual recebe display: flex, todas as outras display: none
+      Object.entries(screens).forEach(([k, el]) => {
+        if (el) {
+          const active = (k === screenKey);
+          el.classList.toggle('is-active', active);
+          el.style.display = active ? 'flex' : 'none';
+        }
+      });
+
+      // 3. Ajusta o mascote de acordo com a tela
+      presenterDock.classList.remove('mode-welcome', 'mode-terms', 'mode-register', 'mode-arena', 'mode-ranking');
+      if (screenKey === 'welcome') {
+        presenterDock.classList.add('mode-welcome');
+        hostSay('Olá, você chegou ao lugar certo! Eu sou o <strong>Chimia</strong>, serei o mediador da competição de perguntas e respostas. Teste seus conhecimentos sobre o nosso território, agroecologia, cultura e sistemas agroindustriais.', 'wave', 'ppgGreen');
+      }
+      if (screenKey === 'terms') presenterDock.classList.add('mode-terms');
+      if (screenKey === 'register') presenterDock.classList.add('mode-register');
+      if (screenKey === 'arena') presenterDock.classList.add('mode-arena');
+      if (screenKey === 'ranking') presenterDock.classList.add('mode-ranking');
+
+      if (screenKey !== 'arena' && screenKey !== 'ranking') {
+        gloopHost.setState(pickRandomMascotState(true));
+      }
+
+      startMascotIdleCycle();
+
+      if (screenKey !== 'register') {
+        stopLiveSelfieCamera();
+      }
+
+      const stage = document.getElementById('quizStage');
+      if (stage) stage.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }
+
+    const chkAcceptTerms = document.getElementById('chkAcceptTerms');
+    const chkInlineTerms = document.getElementById('chkInlineTerms');
+    const inlineTermsConsentWrap = document.getElementById('inlineTermsConsentWrap');
+    const btnProceedRanked = document.getElementById('btnProceedRanked');
+    const btnProceedAnonymous = document.getElementById('btnProceedAnonymous');
+    const tabModeRanked = document.getElementById('tabModeRanked');
+    const tabModeAnon = document.getElementById('tabModeAnon');
+    const anonNoticeBox = document.getElementById('anonNoticeBox');
+    const registerFieldsRow = document.getElementById('registerFieldsRow');
+    const nameFieldGroup = document.getElementById('nameFieldGroup');
+    const inputPlayerName = document.getElementById('inputPlayerName');
+    const inputPlayerAge = document.getElementById('inputPlayerAge');
+    const ageModeBanner = document.getElementById('ageModeBanner');
+    const ageModeText = document.getElementById('ageModeText');
+    const btnStartQuizGame = document.getElementById('btnStartQuizGame');
+
+    chkAcceptTerms.addEventListener('change', () => {
+      chkInlineTerms.checked = chkAcceptTerms.checked;
+      btnProceedRanked.disabled = !chkAcceptTerms.checked;
+      if (chkAcceptTerms.checked) {
+        hostSay('Termos aceitos! Clique em <strong>Competir no Ranking</strong> para tirar sua selfie e informar seu nome!', 'happy', 'ppgGreen');
+      }
+    });
+
+    chkInlineTerms.addEventListener('change', () => {
+      chkAcceptTerms.checked = chkInlineTerms.checked;
+      btnProceedRanked.disabled = !chkAcceptTerms.checked;
+      validateRegistrationForm();
+    });
+
+    function applyRegistrationMode(ranked) {
+      isRankedMode = ranked;
+      tabModeRanked.classList.toggle('is-active', ranked);
+      tabModeAnon.classList.toggle('is-active', !ranked);
+
+      if (ranked) {
+        // Modo Com Selfie: exige aceite dos Termos, Nome, Idade e Selfie na Hora
+        anonNoticeBox.style.display = 'none';
+        inlineTermsConsentWrap.style.display = chkAcceptTerms.checked ? 'none' : 'flex';
+        nameFieldGroup.style.display = 'flex';
+        inputPlayerName.disabled = false;
+        registerFieldsRow.classList.remove('is-age-only');
+        selfieBox.style.display = 'flex';
+        if (lblSwitchRegisterMode) lblSwitchRegisterMode.textContent = "Mudar para Modo Casual";
+        btnStartQuizGame.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg> Iniciar Valendo Ranking (7 Questões)';
+
+        hostSay(
+          'Jogue sozinho ou junte sua galera, tirem uma selfie e participem juntos do desafio!',
+          'curious',
+          'ppgGreen'
+        );
+
+        if (!capturedSelfieDataUrl) {
+          startLiveSelfieCamera();
+        }
+      } else {
+        // Modo Sem Selfie: NÃO pode colocar nome e NÃO participa do ranking!
+        stopLiveSelfieCamera();
+        inputPlayerName.value = '';
+        inputPlayerName.disabled = true;
+        nameFieldGroup.style.display = 'none';
+        registerFieldsRow.classList.add('is-age-only');
+        inlineTermsConsentWrap.style.display = 'none';
+        selfieBox.style.display = 'none';
+        anonNoticeBox.style.display = 'block';
+        if (lblSwitchRegisterMode) lblSwitchRegisterMode.textContent = "Mudar para Valendo Ranking";
+        btnStartQuizGame.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg> Começar Partida Casual (Sem Ranking)';
+
+        hostSay(
+          'Modo <strong>Casual</strong> ativado! Só me diga sua <strong>idade</strong> para personalizar sua experiência — ou jogue casualmente, sem ranking!',
+          pickRandomMascotState(true),
+          'ppgGreen'
+        );
+      }
+
+      validateRegistrationForm();
+    }
+
+    btnProceedRanked.addEventListener('click', () => {
+      if (!chkAcceptTerms.checked) return;
+      showScreen('register');
+      applyRegistrationMode(true);
+    });
+
+    btnProceedAnonymous.addEventListener('click', () => {
+      showScreen('register');
+      applyRegistrationMode(false);
+    });
+
+
+    // Listeners para os botões do dock inferior reimaginado
+    const btnWelcomeRanked = document.getElementById('btnWelcomeRanked');
+    const btnWelcomeCasual = document.getElementById('btnWelcomeCasual');
+    const btnWelcomeReset = document.getElementById('btnWelcomeReset');
+    const btnSwitchRegisterMode = document.getElementById('btnSwitchRegisterMode');
+    const lblSwitchRegisterMode = document.getElementById('lblSwitchRegisterMode');
+    const btnViewRankingFromRegister = document.getElementById('btnViewRankingFromRegister');
+
+    if (btnWelcomeRanked) {
+      btnWelcomeRanked.addEventListener('click', () => {
+        showScreen('terms');
+        applyRegistrationMode(true);
+        hostSay('Aceite os termos para registrar sua selfie ao vivo no Ranking Oficial!', 'happy', 'ppgGreen');
+      });
+    }
+
+    if (btnWelcomeCasual) {
+      btnWelcomeCasual.addEventListener('click', () => {
+        showScreen('register');
+        applyRegistrationMode(false);
+      });
+    }
+
+    if (btnWelcomeReset) {
+      btnWelcomeReset.addEventListener('click', () => {
+        if (typeof gloopHost !== 'undefined' && gloopHost.setState) {
+          gloopHost.setState('wave');
+        }
+        hostSay('Olá! Eu sou o <strong>Gloop</strong>! Pronto para testar seus conhecimentos no Quiz da Ciência?', 'happy', 'ppgGreen');
+      });
+    }
+
+    if (btnSwitchRegisterMode) {
+      btnSwitchRegisterMode.addEventListener('click', () => {
+        applyRegistrationMode(!isRankedMode);
+      });
+    }
+
+    if (btnViewRankingFromRegister) {
+      btnViewRankingFromRegister.addEventListener('click', () => {
+        stopLiveSelfieCamera();
+        showScreen('ranking');
+      });
+    }
+
+    tabModeRanked.addEventListener('click', () => applyRegistrationMode(true));
+    tabModeAnon.addEventListener('click', () => applyRegistrationMode(false));
+
+    document.getElementById('btnBackToTerms').addEventListener('click', () => {
+      showScreen('terms');
+      hostSay(
+        'De volta ao início! Escolha disputar o <strong>Ranking com Selfie</strong> ou jogue casualmente, sem ranking!',
+        'curious',
+        'ppgGreen'
+      );
+    });
+
+    function validateRegistrationForm() {
+      const name = inputPlayerName.value.trim();
+      const age = Number(inputPlayerAge.value);
+      const validAge = Number.isInteger(age) && age >= 5 && age <= 110;
+      const termsOk = chkAcceptTerms.checked || chkInlineTerms.checked;
+
+      if (ageModeBanner && ageModeText) {
+        if (validAge) {
+          if (age <= YOUTH_MAX_AGE) {
+            ageModeBanner.className = 'age-mode-banner is-youth';
+            ageModeText.innerHTML =
+              `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg> <strong>Liga Marreco:</strong> Experiência personalizada ativada para você!`;
+          } else {
+            ageModeBanner.className = 'age-mode-banner is-adult';
+            ageModeText.innerHTML =
+              `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> <strong>Liga Ganso:</strong> Experiência personalizada ativada para você!`;
+          }
+        } else {
+          ageModeBanner.className = 'age-mode-banner';
+          ageModeText.textContent =
+            'Informe sua idade para personalizar sua experiência (Liga Marreco ou Liga Ganso).';
+        }
+      }
+
+      if (isRankedMode) {
+        btnStartQuizGame.disabled = !(termsOk && name.length >= 2 && validAge && Boolean(capturedSelfieDataUrl));
+      } else {
+        // MODO CASUAL: NUNCA BLOQUEIA! Se informou idade personaliza, senão joga livremente (padrão 18 anos)!
+        btnStartQuizGame.disabled = false;
+      }
+    }
+
+    inputPlayerName.addEventListener('input', () => {
+      validateRegistrationForm();
+      const nm = inputPlayerName.value.trim();
+      if (nm.length >= 2 && !inputPlayerAge.value) {
+        hostSay(`Prazer, <strong>${nm.replace(/[<>&]/g, '')}</strong>! Agora digite sua <strong>idade</strong> para personalizar sua experiência!`, 'happy', 'ppgGreen');
+      }
+    });
+
+    inputPlayerAge.addEventListener('input', () => {
+      validateRegistrationForm();
+      const age = Number(inputPlayerAge.value);
+      if (Number.isInteger(age) && age >= 5 && age <= 110) {
+        if (age <= YOUTH_MAX_AGE) {
+          hostSay(
+            `Show! Você vai competir na <strong>Liga Marreco</strong>! Experiência personalizada preparada com sucesso!`,
+            'happy',
+            'ppgGreen'
+          );
+        } else {
+          hostSay(
+            `Excelente! Você vai competir na <strong>Liga Ganso</strong>! Experiência personalizada preparada com sucesso!`,
+            'reading',
+            'ppgGreen'
+          );
+        }
+      }
+    });
+
+    // =======================================================================
+    // 7. MOTOR DO JOGO + APRESENTAÇÃO AO VIVO DO MASCOTE GLOOP
+    // =======================================================================
+    let matchState = null;
+    let savedPlayerProfile = null;
+    try {
+      const rawStoredProfile = sessionStorage.getItem('ppgdtsa_active_player_profile');
+      if (rawStoredProfile) savedPlayerProfile = JSON.parse(rawStoredProfile);
+    } catch (_) {}
+    let questionTimerRaf = null;
+    let lastTickSecond = null;
+    let warnedLowTime = false;
+
+    const hudPlayerAvatar = document.getElementById('hudPlayerAvatar');
+    const hudPlayerName = document.getElementById('hudPlayerName');
+    const hudModeTag = document.getElementById('hudModeTag');
+    const hudCorrectVal = document.getElementById('hudCorrectVal');
+    const hudTotalTimeVal = document.getElementById('hudTotalTimeVal');
+    const baseProgressionStrip = document.getElementById('baseProgressionStrip');
+    const challengerProgressLabel = document.getElementById('challengerProgressLabel');
+    const timerCategoryLabel = document.getElementById('timerCategoryLabel');
+    const timerSecondsBadge = document.getElementById('timerSecondsBadge');
+    const timerBarFill = document.getElementById('timerBarFill');
+    const qLevelPill = document.getElementById('qLevelPill');
+    const qThemePill = document.getElementById('qThemePill');
+    const questionStem = document.getElementById('questionStem');
+    const optionsList = document.getElementById('optionsList');
+    const feedbackDrawer = document.getElementById('feedbackDrawer');
+    const feedbackTitle = document.getElementById('feedbackTitle');
+    const feedbackTimeTaken = document.getElementById('feedbackTimeTaken');
+    const feedbackExplanation = document.getElementById('feedbackExplanation');
+    const btnNextQuestion = document.getElementById('btnNextQuestion');
+
+    function formatTimeSeconds(ms) {
+      const sec = Math.max(0, ms) / 1000;
+      if (sec < 60) return `${sec.toFixed(1)}s`;
+      const m = Math.floor(sec / 60);
+      const rem = (sec % 60).toFixed(1).padStart(4, '0');
+      return `${m}m ${rem}s`;
+    }
+
+    function renderBasePips() {
+      baseProgressionStrip.innerHTML = '';
+      for (let i = 0; i < BASE_QUIZ_COUNT; i++) {
+        const pip = document.createElement('div');
+        pip.className = 'prog-pip';
+        if (i < matchState.history.length) {
+          pip.classList.add(matchState.history[i] ? 'is-correct' : 'is-wrong');
+        } else if (i === matchState.currentIndex) {
+          pip.classList.add('is-current');
+        }
+        baseProgressionStrip.appendChild(pip);
+      }
+    }
+
+    const HOST_QUESTION_PROMPTS = [
+      'Deixa eu conferir na minha caderneta... Qual dessas 4 opções está certa?',
+      'Pergunta fresquinha da Rua da Ciência! Leia com calma e marque a correta!',
+      'Olha que tema interessante sobre o nosso território! O que você acha?',
+      'Olho no relógio! Lembre que responder rápido ajuda no desempate!',
+      'Mais uma da minha caderneta científica! Qual alternativa faz sentido?'
+    ];
+
+    function startNewMatch() {
+      const rawAge = Number(inputPlayerAge.value);
+      const hasValidAge = Number.isInteger(rawAge) && rawAge >= 5 && rawAge <= 110;
+      const age = hasValidAge ? rawAge : 18;
+      const isYouth = age <= YOUTH_MAX_AGE;
+      const limitMs = isYouth ? TIME_YOUTH_MS : TIME_ADULT_MS;
+      const ranked = isRankedMode;
+      const safeName = ranked ? inputPlayerName.value.trim() : 'Visitante (Sem Ranking)';
+      const avatarSrc = ranked ? capturedSelfieDataUrl : './assets/ppgdtsa_tree.png';
+
+      matchState = {
+        id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `q_${Date.now()}`,
+        isRanked: ranked,
+        playerName: safeName,
+        playerAge: age,
+        ageGroup: isYouth ? 'jovem' : 'adulto',
+        selfieDataUrl: avatarSrc,
+        questionLimitMs: limitMs,
+        deck: buildMatchDeck(age),
+        currentIndex: 0,
+        correctCount: 0,
+        questionsAnswered: 0,
+        totalTimeMs: 0,
+        inChallengerMode: false,
+        history: [],
+        questionStartPerf: 0,
+        isQuestionActive: false,
+        gameEnded: false
+      };
+
+      savedPlayerProfile = {
+        playerName: matchState.playerName,
+        playerAge: matchState.playerAge,
+        selfieDataUrl: matchState.selfieDataUrl,
+        isRanked: matchState.isRanked
+      };
+      try {
+        sessionStorage.setItem('ppgdtsa_active_player_profile', JSON.stringify(savedPlayerProfile));
+      } catch (_) {}
+      updateReplayButtonsVisibility();
+
+      document.body.classList.remove('is-challenger-mode');
+      if (presenterTitleLabel) presenterTitleLabel.textContent = 'Gloop • Apresentador PPGDTSA';
+      if (hudPlayerAvatar) hudPlayerAvatar.src = matchState.selfieDataUrl;
+      if (hudPlayerName) hudPlayerName.textContent = ranked ? `${matchState.playerName} (${matchState.playerAge}a)` : `Visitante (${matchState.playerAge}a) • Sem Ranking`;
+
+      if (timerCategoryLabel) {
+        timerCategoryLabel.textContent = isYouth ? '⏱️ Liga Marreco' : '⏱️ Liga Ganso';
+      }
+
+      showScreen('arena');
+      loadCurrentQuestion();
+    }
+
+    function updateReplayButtonsVisibility() {
+      const btnDock = document.getElementById('btnPlayAgainSamePlayer');
+      const boxResult = document.getElementById('resultReplayBox');
+      const lblDock = document.getElementById('lblPlayAgainDock');
+      const lblResult = document.getElementById('lblResultReplaySame');
+
+      if (savedPlayerProfile) {
+        const isRanked = savedPlayerProfile.isRanked;
+        const firstName = (savedPlayerProfile.playerName || '').split(' ')[0] || '';
+        const dockText = isRanked && firstName && firstName !== 'Visitante'
+          ? `Jogar Novamente (${firstName})`
+          : 'Jogar Novamente';
+        const resultText = isRanked
+          ? (firstName ? `Jogar Novamente para Melhorar no Ranking (${firstName})!` : 'Jogar Novamente para Melhorar no Ranking!')
+          : 'Jogar Novamente para Superar seu Recorde!';
+
+        if (btnDock) {
+          btnDock.style.display = 'inline-flex';
+          if (lblDock) lblDock.textContent = dockText;
+        }
+        if (boxResult) {
+          boxResult.style.display = 'block';
+          if (lblResult) lblResult.textContent = resultText;
+        }
+      } else {
+        if (btnDock) btnDock.style.display = 'none';
+        if (boxResult) boxResult.style.display = 'none';
+      }
+    }
+
+    function playAgainWithSameProfile() {
+      if (!savedPlayerProfile) {
+        showScreen('welcome');
+        return;
+      }
+
+      const age = savedPlayerProfile.playerAge || 18;
+      const isYouth = age <= YOUTH_MAX_AGE;
+      const limitMs = isYouth ? TIME_YOUTH_MS : TIME_ADULT_MS;
+      const ranked = savedPlayerProfile.isRanked;
+      const safeName = ranked ? savedPlayerProfile.playerName : 'Visitante (Sem Ranking)';
+      const avatarSrc = ranked ? savedPlayerProfile.selfieDataUrl : './assets/ppgdtsa_tree.png';
+
+      if (ranked) {
+        inputPlayerName.value = savedPlayerProfile.playerName;
+        inputPlayerAge.value = String(savedPlayerProfile.playerAge);
+        capturedSelfieDataUrl = savedPlayerProfile.selfieDataUrl;
+        isRankedMode = true;
+      } else {
+        inputPlayerName.value = '';
+        inputPlayerAge.value = savedPlayerProfile.playerAge ? String(savedPlayerProfile.playerAge) : '';
+        capturedSelfieDataUrl = '';
+        isRankedMode = false;
+      }
+
+      matchState = {
+        id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `q_${Date.now()}`,
+        isRanked: ranked,
+        playerName: safeName,
+        playerAge: age,
+        ageGroup: isYouth ? 'jovem' : 'adulto',
+        selfieDataUrl: avatarSrc,
+        questionLimitMs: limitMs,
+        deck: buildMatchDeck(age),
+        currentIndex: 0,
+        correctCount: 0,
+        questionsAnswered: 0,
+        totalTimeMs: 0,
+        inChallengerMode: false,
+        history: [],
+        questionStartPerf: 0,
+        isQuestionActive: false,
+        gameEnded: false
+      };
+
+      document.body.classList.remove('is-challenger-mode');
+      if (presenterTitleLabel) presenterTitleLabel.textContent = 'Gloop • Apresentador PPGDTSA';
+      if (hudPlayerAvatar) hudPlayerAvatar.src = matchState.selfieDataUrl;
+      if (hudPlayerName) hudPlayerName.textContent = ranked ? `${matchState.playerName} (${matchState.playerAge}a)` : `Visitante (${matchState.playerAge}a) • Sem Ranking`;
+
+      if (timerCategoryLabel) {
+        timerCategoryLabel.textContent = isYouth ? '⏱️ Liga Marreco' : '⏱️ Liga Ganso';
+      }
+
+      document.getElementById('feedbackDrawer')?.classList.remove('is-open');
+      document.getElementById('modalChallengerUnlock')?.classList.remove('is-open');
+
+      showScreen('arena');
+      loadCurrentQuestion();
+
+      if (ranked) {
+        hostSay(
+          `Bora superar sua pontuação no Ranking, <strong>${matchState.playerName.replace(/[<>&]/g, '')}</strong>! Concentração total!`,
+          'happy',
+          'ppgGreen'
+        );
+      } else {
+        hostSay(
+          'Partida reiniciada! Vamos ver se você bate seu recorde de acertos!',
+          'happy',
+          'ppgGreen'
+        );
+      }
+    }
+
+    btnStartQuizGame.addEventListener('click', startNewMatch);
+    document.getElementById('btnPlayAgainSamePlayer')?.addEventListener('click', playAgainWithSameProfile);
+    document.getElementById('btnResultReplaySame')?.addEventListener('click', playAgainWithSameProfile);
+
+    function loadCurrentQuestion() {
+      if (!matchState) return;
+      const q = matchState.deck[matchState.currentIndex];
+      if (!q) {
+        finishMatch();
+        return;
+      }
+
+      if (hudCorrectVal) hudCorrectVal.textContent = String(matchState.correctCount);
+      if (hudTotalTimeVal) hudTotalTimeVal.textContent = formatTimeSeconds(matchState.totalTimeMs);
+      warnedLowTime = false;
+
+      // Fala e animação do Gloop ao puxar a pergunta!
+      const qNum = matchState.currentIndex + 1;
+      if (matchState.inChallengerMode) {
+        if (hudModeTag) hudModeTag.textContent = `DESAFIANTE • #${qNum}`;
+        challengerProgressLabel.textContent = `Questão ${qNum} / ${MAX_TOTAL_QUESTIONS}`;
+        if (presenterTitleLabel) presenterTitleLabel.textContent = 'Gloop • Modo Desafiante';
+        const challAnim = qNum % 2 === 0 ? 'reading' : 'curious';
+        hostSay(
+          `<strong>Questão #${qNum} na Morte Súbita!</strong> Não pode errar nenhuma — concentração total!`,
+          challAnim,
+          'ppgChallenger'
+        );
+      } else {
+        if (hudModeTag) hudModeTag.textContent = `QUIZ BASE • ${qNum} / ${BASE_QUIZ_COUNT}`;
+        renderBasePips();
+        if (qNum === 1) {
+          hostSay(
+            `Valendo! <strong>Pergunta 1 de ${BASE_QUIZ_COUNT}</strong> na minha caderneta! Qual das quatro alternativas é a certa?`,
+            'reading',
+            'ppgGreen'
+          );
+        } else if (qNum === BASE_QUIZ_COUNT && matchState.correctCount === BASE_QUIZ_COUNT - 1) {
+          hostSay(
+            '<strong>DECISIVA!</strong> Você acertou todas até agora! Se acertar esta 7ª questão, desbloqueia o <strong>Modo Desafiante</strong>!',
+            'reading',
+            'ppgGreen'
+          );
+        } else {
+          const hostAnims = ['reading', 'curious', 'reading', 'thinking'];
+          const promptTxt = HOST_QUESTION_PROMPTS[(qNum - 2) % HOST_QUESTION_PROMPTS.length];
+          hostSay(
+            `<strong>Pergunta ${qNum}/${BASE_QUIZ_COUNT}:</strong> ${promptTxt}`,
+            hostAnims[qNum % hostAnims.length],
+            'ppgGreen'
+          );
+        }
+      }
+
+      if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        if (qLevelPill) {
+        qLevelPill.className = `q-level-pill lvl-${q.nivel}`;
+        qLevelPill.textContent = q.dificuldadeLabel;
+      }
+      if (qThemePill) {
+        qThemePill.textContent = q.tema || q.categoria;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      }
+      if (optionsList) optionsList.scrollTop = 0;
+      questionStem.textContent = q.pergunta;
+
+      const indexedOptions = q.opcoes.map((text, idx) => ({
+        text,
+        isCorrect: idx === q.correta
+      }));
+      const shuffledOptions = shuffleArray(indexedOptions);
+      matchState.currentShuffledOptions = shuffledOptions;
+
+      const letters = ['A', 'B', 'C', 'D'];
+      optionsList.innerHTML = '';
+      shuffledOptions.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'option-btn';
+        btn.innerHTML = `
+          <span class="option-letter">${letters[idx]}</span>
+          <span class="option-text"></span>
+        `;
+        btn.querySelector('.option-text').textContent = opt.text;
+        btn.addEventListener('click', () => handleSelectOption(idx));
+        optionsList.appendChild(btn);
+      });
+
+      feedbackDrawer.classList.remove('is-visible', 'is-wrong-fb');
+      feedbackDrawer.style.display = 'none';
+
+      // Inicializa a barra em 100% e o badge com o tempo integral da pergunta
+      if (timerBarFill) {
+        timerBarFill.style.width = '100%';
+        timerBarFill.classList.remove('is-warn', 'is-danger');
+      }
+      if (timerSecondsBadge) {
+        timerSecondsBadge.textContent = `${(matchState.questionLimitMs / 1000).toFixed(1)}s`;
+        timerSecondsBadge.classList.remove('is-warn', 'is-danger');
+      }
+
+      matchState.questionStartPerf = performance.now();
+      matchState.isQuestionActive = true;
+      lastTickSecond = null;
+
+      if (questionTimerRaf) cancelAnimationFrame(questionTimerRaf);
+      questionTimerRaf = requestAnimationFrame(updateQuestionTimer);
+    }
+
+    function updateQuestionTimer(now) {
+      if (!matchState || !matchState.isQuestionActive) return;
+
+      const currentTime = performance.now();
+      const elapsed = Math.max(0, currentTime - matchState.questionStartPerf);
+      const remaining = Math.max(0, matchState.questionLimitMs - elapsed);
+      const pct = Math.min(100, Math.max(0, (remaining / matchState.questionLimitMs) * 100));
+
+      if (timerBarFill) {
+        timerBarFill.style.width = `${pct.toFixed(2)}%`;
+      }
+      if (timerSecondsBadge) {
+        timerSecondsBadge.textContent = `${(remaining / 1000).toFixed(1)}s`;
+      }
+      if (hudTotalTimeVal) {
+        hudTotalTimeVal.textContent = formatTimeSeconds(matchState.totalTimeMs + elapsed);
+      }
+
+      if (timerBarFill) timerBarFill.classList.remove('is-warn', 'is-danger');
+      if (timerSecondsBadge) timerSecondsBadge.classList.remove('is-warn', 'is-danger');
+
+      if (pct <= 22 || remaining <= 10000) {
+        if (timerBarFill) timerBarFill.classList.add('is-danger');
+        if (timerSecondsBadge) timerSecondsBadge.classList.add('is-danger');
+
+        if (!warnedLowTime) {
+          warnedLowTime = true;
+          hostSay(
+            '<strong>Corre! Menos de 10 segundos!</strong> Escolhe sua resposta antes que o tempo zere!',
+            'surprised',
+            matchState.inChallengerMode ? 'ppgChallenger' : 'ppgOops',
+            true
+          );
+        }
+
+        const secCeil = Math.ceil(remaining / 1000);
+        if (secCeil <= 5 && secCeil > 0 && secCeil !== lastTickSecond) {
+          lastTickSecond = secCeil;
+          sfxTickUrgent();
+        }
+      } else if (pct <= 50) {
+        if (timerBarFill) timerBarFill.classList.add('is-warn');
+        if (timerSecondsBadge) timerSecondsBadge.classList.add('is-warn');
+      }
+
+      if (remaining <= 0) {
+        handleSelectOption(-1);
+        return;
+      }
+
+      questionTimerRaf = requestAnimationFrame(updateQuestionTimer);
+    }
+
+    function handleSelectOption(selectedIndex) {
+      if (!matchState || !matchState.isQuestionActive) return;
+      matchState.isQuestionActive = false;
+      if (questionTimerRaf) cancelAnimationFrame(questionTimerRaf);
+
+      const rawElapsed = Math.round(performance.now() - matchState.questionStartPerf);
+      const spentMs = selectedIndex === -1
+        ? matchState.questionLimitMs
+        : Math.min(matchState.questionLimitMs, Math.max(120, rawElapsed));
+
+      matchState.totalTimeMs += spentMs;
+      matchState.questionsAnswered += 1;
+
+      const q = matchState.deck[matchState.currentIndex];
+      const shuffled = matchState.currentShuffledOptions;
+      const isCorrect = selectedIndex >= 0 && shuffled[selectedIndex] && shuffled[selectedIndex].isCorrect;
+
+      if (isCorrect) {
+        matchState.correctCount += 1;
+        sfxCorrect();
+        const celebrateAnim = (matchState.correctCount % 4 === 0) ? 'petting_chick' : 'happy';
+        hostSay(
+          `<strong>Certa resposta em ${(spentMs / 1000).toFixed(1)}s!</strong> Você já soma <strong>${matchState.correctCount}</strong> acerto(s)! Confira o comentário abaixo:`,
+          celebrateAnim,
+          matchState.inChallengerMode ? 'ppgChallenger' : 'ppgGreen',
+          false
+        );
+      } else {
+        sfxWrong();
+        if (selectedIndex === -1) {
+          hostSay(
+            '<strong>O tempo esgotou!</strong> Mas sem desanimar — olha a explicação abaixo pra aprender essa!',
+            'sleepy',
+            'ppgOops',
+            true
+          );
+        } else {
+          hostSay(
+            '<strong>Ops, quase!</strong> A alternativa verde era a correta. Dá uma espiada na explicação aqui embaixo!',
+            'surprised',
+            'ppgOops',
+            false
+          );
+        }
+      }
+
+      matchState.history.push(isCorrect);
+      if (!matchState.inChallengerMode) renderBasePips();
+
+      if (hudCorrectVal) hudCorrectVal.textContent = String(matchState.correctCount);
+      if (hudTotalTimeVal) hudTotalTimeVal.textContent = formatTimeSeconds(matchState.totalTimeMs);
+
+      const buttons = optionsList.querySelectorAll('.option-btn');
+      buttons.forEach((btn, idx) => {
+        btn.disabled = true;
+        if (shuffled[idx].isCorrect) {
+          btn.classList.add('is-correct');
+        } else if (idx === selectedIndex) {
+          btn.classList.add('is-wrong');
+        } else {
+          btn.classList.add('is-dimmed');
+        }
+      });
+
+      feedbackDrawer.classList.toggle('is-wrong-fb', !isCorrect);
+      if (selectedIndex === -1) {
+        feedbackTitle.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Tempo Esgotado!';
+      } else if (isCorrect) {
+        feedbackTitle.innerHTML = matchState.inChallengerMode
+          ? `<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Acertou! Sequência: ${matchState.correctCount} seguidas!`
+          : '<svg class="icon-svg icon-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Resposta Correta!';
+      } else {
+        feedbackTitle.innerHTML = '<span class="status-icon danger-icon"><svg class="icon-svg icon-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span> Resposta Incorreta';
+      }
+
+      feedbackTimeTaken.textContent = `+${(spentMs / 1000).toFixed(1)}s`;
+      feedbackExplanation.textContent = q.explicacao || '';
+
+      const isLastBaseQuestion = !matchState.inChallengerMode && matchState.currentIndex === BASE_QUIZ_COUNT - 1;
+      const isChallengerEliminated = matchState.inChallengerMode && !isCorrect;
+      const isReachedAbsoluteMax = matchState.currentIndex >= MAX_TOTAL_QUESTIONS - 1;
+
+      if (isChallengerEliminated || isReachedAbsoluteMax) {
+        btnNextQuestion.innerHTML = 'Ver Resultado Final';
+      } else if (isLastBaseQuestion) {
+        btnNextQuestion.textContent = (matchState.correctCount === BASE_QUIZ_COUNT)
+          ? 'Desbloquear Modo Desafiante (7/7)'
+          : 'Concluir Quiz e Ver Placar';
+      } else {
+        btnNextQuestion.innerHTML = 'Próxima Pergunta <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+      }
+
+      feedbackDrawer.classList.add('is-visible');
+      setTimeout(() => {
+        feedbackDrawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 60);
+    }
+
+    btnNextQuestion.addEventListener('click', () => {
+      if (!matchState) return;
+
+      const isLastBaseQuestion = !matchState.inChallengerMode && matchState.currentIndex === BASE_QUIZ_COUNT - 1;
+      const lastWasCorrect = matchState.history[matchState.history.length - 1];
+
+      if (isLastBaseQuestion) {
+        if (matchState.correctCount === BASE_QUIZ_COUNT) {
+          sfxChallengerFanfare();
+          launchConfetti(3200);
+          hostSay(
+            '<strong>7 DE 7 PERFEITO!</strong> Você liberou o <strong>Modo Desafiante</strong>! Vamos ver até onde você chega!',
+            'happy',
+            'ppgChallenger'
+          );
+          document.getElementById('challengerUnlockTime').textContent = formatTimeSeconds(matchState.totalTimeMs);
+          document.getElementById('modalChallengerUnlock').classList.add('is-open');
+        } else {
+          finishMatch();
+        }
+        return;
+      }
+
+      if (matchState.inChallengerMode && (!lastWasCorrect || matchState.currentIndex >= MAX_TOTAL_QUESTIONS - 1)) {
+        finishMatch();
+        return;
+      }
+
+      matchState.currentIndex += 1;
+      loadCurrentQuestion();
+    });
+
+    document.getElementById('btnEnterChallengerNow').addEventListener('click', () => {
+      document.getElementById('modalChallengerUnlock').classList.remove('is-open');
+      if (!matchState) return;
+      matchState.inChallengerMode = true;
+      matchState.currentIndex = BASE_QUIZ_COUNT;
+      document.body.classList.add('is-challenger-mode');
+      loadCurrentQuestion();
+    });
+
+    // =======================================================================
+    // 8. FINALIZAÇÃO + RANKING (SALVA APENAS SE COM SELFIE!)
+    // =======================================================================
+    let currentRankingFilter = 'all';
+    let lastCompletedMatchId = null;
+    let cachedRankingList = [];
+
+    async function finishMatch() {
+      const fbDrawer = document.getElementById('feedbackDrawer');
+      if (fbDrawer) {
+        fbDrawer.classList.remove('is-visible');
+        fbDrawer.style.display = 'none';
+      }
+      if (questionTimerRaf) {
+        cancelAnimationFrame(questionTimerRaf);
+        questionTimerRaf = null;
+      }
+      if (typeof timerInterval !== 'undefined' && timerInterval) clearInterval(timerInterval);
+      if (!matchState || matchState.gameEnded) return;
+      matchState.gameEnded = true;
+      document.body.classList.remove('is-challenger-mode');
+      if (presenterTitleLabel) presenterTitleLabel.textContent = 'Gloop • Apresentador PPGDTSA';
+
+      const reachedChallenger = matchState.inChallengerMode || matchState.correctCount >= BASE_QUIZ_COUNT;
+      const playerResultCard = document.getElementById('playerResultCard');
+      playerResultCard.style.display = 'flex';
+      playerResultCard.classList.toggle('is-anon-result', !matchState.isRanked);
+
+      document.getElementById('resultSelfieImg').src = matchState.selfieDataUrl;
+      document.getElementById('resMetricCorrect').textContent = `${matchState.correctCount}`;
+      document.getElementById('resMetricTime').textContent = formatTimeSeconds(matchState.totalTimeMs);
+
+      const badgeEl = document.getElementById('resultBadgePill');
+      const subEl = document.getElementById('resultSubline');
+      const rankValEl = document.getElementById('resMetricRank');
+      const rankLblEl = document.getElementById('resMetricRankLabel');
+
+      savedPlayerProfile = {
+        playerName: matchState.playerName,
+        playerAge: matchState.playerAge,
+        selfieDataUrl: matchState.selfieDataUrl,
+        isRanked: matchState.isRanked
+      };
+      try {
+        sessionStorage.setItem('ppgdtsa_active_player_profile', JSON.stringify(savedPlayerProfile));
+      } catch (_) {}
+      updateReplayButtonsVisibility();
+
+      showScreen('ranking');
+      hostSay('Calculando resultados e atualizando a tabela da Rua da Ciência...', 'calculating', 'ppgGreen');
+
+      if (matchState.isRanked) {
+        // PARTIDA VALENDO RANKING (COM SELFIE E NOME)
+        document.getElementById('resultHeadline').textContent = `${matchState.playerName} (${matchState.playerAge} anos)`;
+        rankLblEl.textContent = 'Sua Posição';
+        rankValEl.textContent = '...';
+
+        if (matchState.correctCount >= MAX_TOTAL_QUESTIONS) {
+          badgeEl.textContent = 'LENDA INVICTA (66/66)';
+          subEl.textContent = 'Gabarito máximo absoluto do banco de questões!';
+          launchConfetti(4500);
+        } else if (reachedChallenger) {
+          badgeEl.textContent = `DESAFIANTE • ${matchState.correctCount} Acertos`;
+          subEl.textContent = `Avançou até ${matchState.questionsAnswered} questões na Morte Súbita!`;
+          launchConfetti(2800);
+        } else {
+          badgeEl.textContent = `Quiz Base (${matchState.correctCount}/${BASE_QUIZ_COUNT})`;
+          subEl.textContent = 'Pontuação registrada no Ranking Oficial!';
+        }
+
+        const record = {
+          id: matchState.id,
+          player_name: matchState.playerName,
+          player_age: matchState.playerAge,
+          age_group: matchState.ageGroup,
+          correct_count: matchState.correctCount,
+          questions_answered: matchState.questionsAnswered,
+          reached_challenger: reachedChallenger,
+          total_time_ms: matchState.totalTimeMs,
+          selfie_url: matchState.selfieDataUrl,
+          accepted_terms: true,
+          created_at: new Date().toISOString()
+        };
+
+        lastCompletedMatchId = record.id;
+        await saveScoreToDatabase(record);
+        await refreshLeaderboardView(true);
+
+        const myPos = cachedRankingList.findIndex(r => r.id === lastCompletedMatchId);
+        const posText = myPos >= 0 ? `#${myPos + 1}` : 'Registrado';
+        hostSay(
+          `<strong>Parabéns, ${matchState.playerName.replace(/[<>&]/g, '')}!</strong> Você fez <strong>${matchState.correctCount} acertos</strong> em <strong>${formatTimeSeconds(matchState.totalTimeMs)}</strong> e está em <strong>${posText}</strong> no Ranking! Plaza de Honra!`,
+          myPos >= 0 && myPos < 3 ? 'petting_chick' : 'happy',
+          'ppgGreen'
+        );
+      } else {
+        // PARTIDA CASUAL (SEM SELFIE, SEM NOME E FORA DO RANKING)
+        lastCompletedMatchId = null;
+        document.getElementById('resultHeadline').textContent = `Modo Casual (${matchState.ageGroup === 'jovem' ? 'Liga Marreco' : 'Liga Ganso'})`;
+        badgeEl.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Modo Casual • Sem Ranking';
+        subEl.textContent = 'Como você jogou no modo casual sem selfie, esta pontuação não foi enviada ao Ranking.';
+        rankLblEl.textContent = 'Ranking';
+        rankValEl.textContent = 'Casual';
+
+        if (reachedChallenger) launchConfetti(2500);
+        await refreshLeaderboardView();
+
+        hostSay(
+          `Mandou super bem: <strong>${matchState.correctCount} acertos</strong> em <strong>${formatTimeSeconds(matchState.totalTimeMs)}</strong>! Na próxima, tire uma selfie para disputar o Pódio Oficial!`,
+          'happy',
+          'ppgGreen'
+        );
+      }
+    }
+
+    async function refreshLeaderboardView(force = false) {
+      cachedRankingList = await fetchRankingFromDatabase(force);
+
+      if (lastCompletedMatchId && matchState && matchState.isRanked) {
+        const myPos = cachedRankingList.findIndex(
+          r =>
+            r.id === lastCompletedMatchId ||
+            (r.player_name === matchState.playerName &&
+              r.correct_count === matchState.correctCount &&
+              r.total_time_ms === matchState.totalTimeMs)
+        );
+        if (myPos >= 0) {
+          document.getElementById('resMetricRank').textContent = `#${myPos + 1}`;
+        }
+      }
+
+      renderLeaderboardDom();
+    }
+
+    let devClickCounter = 0;
+    let devClickTimeout = null;
+    let isDeveloperMode = false;
+
+    async function deleteRankingRecord(item) {
+      if (!item) return;
+      const pName = (item.player_name || 'Participante').replace(/[<>&]/g, '');
+      const ok = window.confirm(`MODERAÇÃO: Deseja realmente excluir permanentemente a pontuação de "${pName}" (${item.correct_count} acertos em ${formatTimeSeconds(item.total_time_ms)})? Esta ação não pode ser desfeita.`);
+      if (!ok) return;
+
+      // 1. Deleta do Supabase REST API diretamente com anon/publishable key (RLS ativado)
+      try {
+        const { url, key, table, isConfigured } = getSupabaseCredentials();
+        if (isConfigured) {
+          let deleteUrl = url + '/rest/v1/' + table + '?';
+          if (item.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id)) {
+            deleteUrl += 'id=eq.' + item.id;
+          } else {
+            deleteUrl += 'player_name=eq.' + encodeURIComponent(item.player_name) + '&total_time_ms=eq.' + item.total_time_ms;
+          }
+          const sbRes = await fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+              apikey: key,
+              Authorization: 'Bearer ' + key,
+              Prefer: 'return=representation'
+            }
+          });
+          console.log('[Moderation] Supabase delete status:', sbRes.status);
+        }
+      } catch (err) {
+        console.warn('Erro ao deletar no Supabase:', err);
+      }
+
+      // 2. Deleta do servidor local (/api/quiz-ranking)
+      try {
+        await fetch('/api/quiz-ranking', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: item.id,
+            player_name: item.player_name,
+            total_time_ms: item.total_time_ms
+          })
+        });
+      } catch (_) {}
+
+      // 3. Deleta do localStorage
+      try {
+        let local = getLocalRankingEntries();
+        local = local.filter(x => {
+          if (item.id && x.id) return x.id !== item.id;
+          return !(x.player_name === item.player_name && x.total_time_ms === item.total_time_ms);
+        });
+        localStorage.setItem(LOCAL_STORAGE_RANKING_KEY, JSON.stringify(local));
+      } catch (_) {}
+
+      // 4. Atualiza memória e tela
+      lastRankingFetchTime = 0;
+      cachedRankingList = cachedRankingList.filter(x => {
+        if (item.id && x.id) return x.id !== item.id;
+        return !(x.player_name === item.player_name && x.total_time_ms === item.total_time_ms);
+      });
+
+      renderLeaderboardDom();
+      sfxWrong();
+      hostSay(`Registro de <strong>${pName}</strong> excluído com sucesso do ranking.`, 'surprised', 'ppgOrange');
+    }
+
+    function renderLeaderboardDom() {
+      const podiumGrid = document.getElementById('podiumGrid');
+      const leaderboardList = document.getElementById('leaderboardList');
+      const devBanner = document.getElementById('devModeBanner');
+
+      if (devBanner) {
+        devBanner.style.display = isDeveloperMode ? 'flex' : 'none';
+      }
+
+      const filtered = cachedRankingList.filter(item => {
+        if (currentRankingFilter === 'challenger') return Boolean(item.reached_challenger || item.correct_count >= BASE_QUIZ_COUNT);
+        if (currentRankingFilter === 'jovem') return item.age_group === 'jovem' || Number(item.player_age) <= YOUTH_MAX_AGE;
+        if (currentRankingFilter === 'adulto') return item.age_group === 'adulto' || Number(item.player_age) > YOUTH_MAX_AGE;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        podiumGrid.innerHTML = '';
+        leaderboardList.innerHTML = `
+          <div style="text-align:center; padding:24px 14px; background:rgba(255,255,255,0.92); border-radius:18px; border:1.5px dashed #b5c2ae; color:var(--ink-500); font-size:0.83rem; font-weight:700;">
+            Ainda não há competidores com selfie nesta categoria. Seja o primeiro a assumir a liderança!
+          </div>
+        `;
+        return;
+      }
+
+      const visualOrder = [1, 0, 2];
+      const medals = ['1º', '2º', '3º'];
+      podiumGrid.innerHTML = '';
+
+      for (const idx of visualOrder) {
+        const item = filtered[idx];
+        const spot = document.createElement('div');
+        spot.className = `podium-spot rank-${idx + 1}`;
+
+        if (!item) {
+          spot.style.opacity = '0.45';
+          spot.innerHTML = `
+            <div class="podium-medal">${medals[idx]}</div>
+            <div class="podium-name">Vaga Aberta</div>
+            <div class="podium-score">—</div>
+          `;
+          podiumGrid.appendChild(spot);
+          continue;
+        }
+
+        const flame = (item.reached_challenger || item.correct_count >= BASE_QUIZ_COUNT) ? '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' : '';
+        const devDelPodium = isDeveloperMode ? `<button type="button" class="btn-dev-delete-podium" title="Excluir este registro">🗑️ Excluir</button>` : '';
+
+        spot.innerHTML = `
+          <div class="podium-medal">${medals[idx]}</div>
+          <div class="podium-avatar-wrap">
+            <img class="podium-avatar" alt="Selfie" />
+          </div>
+          <div class="podium-name"></div>
+          <div class="podium-score">${flame} ${Number(item.correct_count) || 0} acertos</div>
+          <div class="podium-time">⏱️ ${formatTimeSeconds(item.total_time_ms)}</div>
+          ${devDelPodium}
+        `;
+        const podiumImg = spot.querySelector('.podium-avatar');
+        podiumImg.src = item.selfie_url || './src/assets/produtora_busto_hud.jpg';
+        spot.querySelector('.podium-name').textContent = item.player_name || 'Participante';
+        podiumImg.addEventListener('click', () => openPhotoZoomModal(item, idx + 1));
+
+        if (isDeveloperMode) {
+          spot.querySelector('.btn-dev-delete-podium')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteRankingRecord(item);
+          });
+        }
+
+        podiumGrid.appendChild(spot);
+      }
+
+      leaderboardList.innerHTML = '';
+      filtered.forEach((item, index) => {
+        const isMe = Boolean(
+          lastCompletedMatchId &&
+          matchState &&
+          matchState.isRanked &&
+          (item.id === lastCompletedMatchId ||
+            (item.player_name === matchState.playerName &&
+              item.correct_count === matchState.correctCount &&
+              item.total_time_ms === matchState.totalTimeMs))
+        );
+
+        const row = document.createElement('div');
+        row.className = `lb-row${isMe ? ' is-me' : ''}`;
+        const isChallenger = item.reached_challenger || item.correct_count >= BASE_QUIZ_COUNT;
+        const safeAge = Number(item.player_age) || 0;
+        const ageBadge = safeAge <= YOUTH_MAX_AGE ? '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg> Liga Marreco' : '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> Liga Ganso';
+        const devDelRow = isDeveloperMode ? `
+          <button type="button" class="btn-dev-delete-row" title="Excluir este registro" aria-label="Excluir">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+        ` : '';
+
+        row.innerHTML = `
+          <div class="lb-pos">#${index + 1}</div>
+          <img class="lb-avatar" alt="Selfie" />
+          <div class="lb-main">
+            <div class="lb-name-line">
+              <span class="lb-name"></span>
+              ${isChallenger ? '<span class="icon-svg icon-danger" title="Modo Desafiante" style="display:inline-block; vertical-align:-0.15em;"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>' : ''}
+            </div>
+            <div class="lb-sub">${safeAge} anos • ${ageBadge}${isChallenger ? ' • Desafiante' : ''}</div>
+          </div>
+          <div class="lb-stats-right">
+            <span class="lb-correct">${Number(item.correct_count) || 0} acertos</span>
+            <span class="lb-time">⏱️ ${formatTimeSeconds(item.total_time_ms)}</span>
+          </div>
+          ${devDelRow}
+        `;
+        const lbImg = row.querySelector('.lb-avatar');
+        lbImg.src = item.selfie_url || './src/assets/produtora_busto_hud.jpg';
+        row.querySelector('.lb-name').textContent = item.player_name || 'Participante';
+        lbImg.addEventListener('click', () => openPhotoZoomModal(item, index + 1));
+
+        if (isDeveloperMode) {
+          row.querySelector('.btn-dev-delete-row')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteRankingRecord(item);
+          });
+        }
+
+        leaderboardList.appendChild(row);
+      });
+    }
+
+    document.querySelectorAll('.filter-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab-btn').forEach(b => b.classList.remove('is-active'));
+        btn.classList.add('is-active');
+        currentRankingFilter = btn.dataset.filter || 'all';
+        renderLeaderboardDom();
+      });
+    });
+
+    document.getElementById('btnViewRankingFromHome').addEventListener('click', async () => {
+      document.getElementById('playerResultCard').style.display = 'none';
+      updateReplayButtonsVisibility();
+      showScreen('ranking');
+      hostSay(
+        'Confira os líderes da <strong>Rua da Ciência</strong>! Quer superar esse recorde? Clique em <strong>Novo Jogo</strong>!',
+        pickRandomMascotState(true),
+        'ppgGreen'
+      );
+      await refreshLeaderboardView();
+    });
+
+    // Navegação a partir da Tela de Boas-Vindas
+    document.getElementById('btnWelcomePlay')?.addEventListener('click', () => {
+      showScreen('terms');
+      hostSay(
+        'Aceite os termos para jogar <strong>valendo Ranking com Selfie</strong>... ou escolha jogar casualmente, sem ranking!',
+        'reading',
+        'ppgGreen'
+      );
+    });
+
+    document.getElementById('btnViewRankingFromWelcome')?.addEventListener('click', async () => {
+      const pRes = document.getElementById('playerResultCard');
+      if (pRes) pRes.style.display = 'none';
+      updateReplayButtonsVisibility();
+      showScreen('ranking');
+      hostSay(
+        'Confira os líderes da <strong>Rua da Ciência</strong>! Quer superar esse recorde? Clique em <strong>Novo Jogo</strong>!',
+        'petting_chick',
+        'ppgGreen'
+      );
+      await refreshLeaderboardView();
+    });
+
+    document.getElementById('btnBackToWelcome')?.addEventListener('click', () => {
+      showScreen('welcome');
+    });
+
+    document.getElementById('btnRankingBackHome')?.addEventListener('click', () => {
+        showScreen('welcome');
+      });
+
+      // Modo Desenvolvedor / Moderação com 10 cliques no Logo do PPGDTSA
+      const logoTree = document.getElementById('logoPpgdtsaTree') || document.querySelector('.logo-ppgdtsa');
+      if (logoTree) {
+        logoTree.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          devClickCounter++;
+          if (devClickTimeout) clearTimeout(devClickTimeout);
+          devClickTimeout = setTimeout(() => {
+            devClickCounter = 0;
+          }, 3000);
+
+          if (devClickCounter >= 10) {
+            devClickCounter = 0;
+            isDeveloperMode = true;
+            sfxChallengerFanfare();
+            showScreen('ranking');
+            refreshLeaderboardView(true);
+            hostSay(
+              '🛠️ <strong>Modo Desenvolvedor / Moderação Ativado!</strong> Toque na lixeira vermelha para excluir registros do ranking.',
+              'reading',
+              'ppgOrange'
+            );
+          }
+        });
+      }
+
+      document.getElementById('btnExitDevMode')?.addEventListener('click', () => {
+        isDeveloperMode = false;
+        renderLeaderboardDom();
+        hostSay('Modo Desenvolvedor desativado.', 'happy', 'ppgGreen');
+      });
+    document.getElementById('btnPlayAgainNewPlayer').addEventListener('click', () => {
+      savedPlayerProfile = null;
+      try { sessionStorage.removeItem('ppgdtsa_active_player_profile'); } catch (_) {}
+      inputPlayerName.value = '';
+      inputPlayerAge.value = '';
+      capturedSelfieDataUrl = '';
+      selfieBox.classList.remove('has-photo');
+      btnTakeSelfie.style.display = 'inline-flex';
+      btnSwitchCamera.style.display = 'inline-flex';
+      btnRetakeSelfie.style.display = 'none';
+      chkAcceptTerms.checked = false;
+      chkInlineTerms.checked = false;
+      btnProceedRanked.disabled = true;
+      validateRegistrationForm();
+      updateReplayButtonsVisibility();
+      showScreen('welcome');
+    });
+
+    document.getElementById('btnToggleTvMode').addEventListener('click', () => {
+      document.body.classList.toggle('is-tv-mode');
+    });
+
+    function openPhotoZoomModal(item, rankPos) {
+      document.getElementById('zoomSelfieImg').src = item.selfie_url || './src/assets/produtora_busto_hud.jpg';
+      const leagueName = (Number(item.player_age) || 0) <= YOUTH_MAX_AGE ? 'Liga Marreco' : 'Liga Ganso';
+      document.getElementById('zoomSelfieName').textContent = `#${rankPos} • ${item.player_name} (${leagueName})`;
+      document.getElementById('zoomSelfieMeta').textContent =
+        `${item.correct_count} acertos • Tempo Total: ${formatTimeSeconds(item.total_time_ms)}`;
+      document.getElementById('modalPhotoZoom').classList.add('is-open');
+    }
+
+    document.getElementById('btnClosePhotoZoom').addEventListener('click', () => {
+      document.getElementById('modalPhotoZoom').classList.remove('is-open');
+    });
+
+    // =======================================================================
+    // 9. CONFIGURAÇÃO SUPABASE + SOM + QR CODE + REALTIME
+    // =======================================================================
+    document.getElementById('btnToggleSound')?.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      const soundEl = document.getElementById('soundIcon'); if (soundEl) { soundEl.innerHTML = soundEnabled ? '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' : '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'; }
+    });
+
+    const modalSupabaseConfig = document.getElementById('modalSupabaseConfig');
+    const cfgSupabaseUrl = document.getElementById('cfgSupabaseUrl');
+    const cfgSupabaseKey = document.getElementById('cfgSupabaseKey');
+    const cfgFeedbackMsg = document.getElementById('cfgFeedbackMsg');
+
+    document.getElementById('btnOpenDbConfig')?.addEventListener('click', () => {
+      const { url, key } = getSupabaseCredentials();
+      cfgSupabaseUrl.value = url;
+      cfgSupabaseKey.value = key;
+      cfgFeedbackMsg.style.display = 'none';
+      modalSupabaseConfig.classList.add('is-open');
+    });
+
+    document.getElementById('btnCloseDbConfig').addEventListener('click', () => {
+      modalSupabaseConfig.classList.remove('is-open');
+    });
+
+    let realtimeSubClient = null;
+    async function initSupabaseRealtimeSubscription() {
+      const { url, key, table, isConfigured } = getSupabaseCredentials();
+      if (!isConfigured) return;
+      try {
+        if (realtimeSubClient) {
+          try { realtimeSubClient.removeAllChannels(); } catch (_) {}
+        }
+        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+        realtimeSubClient = createClient(url, key);
+        realtimeSubClient
+          .channel('quiz-ranking-live')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table }, () => {
+            if (screens.ranking.classList.contains('is-active')) {
+              refreshLeaderboardView();
+            }
+          })
+          .subscribe();
+      } catch (_) {}
+    }
+
+    document.getElementById('btnSaveSupabaseConfig').addEventListener('click', async () => {
+      const url = cfgSupabaseUrl.value.trim().replace(/\/+$/, '');
+      const key = cfgSupabaseKey.value.trim();
+      try { localStorage.setItem(LOCAL_STORAGE_SB_CFG_KEY, JSON.stringify({ url, key })); } catch (_) {}
+
+      updateDbStatusBadge();
+      cfgFeedbackMsg.style.display = 'block';
+
+      if (!url || !key) {
+        cfgFeedbackMsg.style.background = '#ffedd5';
+        cfgFeedbackMsg.style.color = '#9a3412';
+        cfgFeedbackMsg.textContent = 'Aviso: Modo Local ativo (sem chaves Supabase).';
+        return;
+      }
+
+      cfgFeedbackMsg.style.background = '#e0f2fe';
+      cfgFeedbackMsg.style.color = '#0369a1';
+      cfgFeedbackMsg.textContent = 'Testando conexão com o Supabase...';
+
+      try {
+        const res = await fetch(`${url}/rest/v1/quiz_ranking?select=id&limit=1`, {
+          headers: { apikey: key, Authorization: `Bearer ${key}` }
+        });
+        if (res.ok) {
+          cfgFeedbackMsg.style.background = '#dcfce7';
+          cfgFeedbackMsg.style.color = '#065f46';
+          cfgFeedbackMsg.textContent = 'Conectado ao Supabase com sucesso! Ranking sincronizado na nuvem.';
+          initSupabaseRealtimeSubscription();
+          await refreshLeaderboardView();
+        } else {
+          cfgFeedbackMsg.style.background = '#fee2e2';
+          cfgFeedbackMsg.style.color = '#991b1b';
+          cfgFeedbackMsg.textContent = `Aviso: Conectou ao servidor, mas execute o SQL (QUIZ/supabase_setup.sql). Status: ${res.status}`;
+        }
+      } catch (_) {
+        cfgFeedbackMsg.style.background = '#fee2e2';
+        cfgFeedbackMsg.style.color = '#991b1b';
+        cfgFeedbackMsg.textContent = 'Erro ao conectar. Verifique Project URL e Anon Key.';
+      }
+    });
+
+    document.getElementById('btnCopySqlScript').addEventListener('click', async () => {
+      try {
+        const res = await fetch('./QUIZ/supabase_setup.sql');
+        const sqlText = await res.text();
+        await navigator.clipboard.writeText(sqlText);
+        cfgFeedbackMsg.style.display = 'block';
+        cfgFeedbackMsg.style.background = '#dcfce7';
+        cfgFeedbackMsg.style.color = '#065f46';
+        cfgFeedbackMsg.textContent = 'Script SQL copiado com sucesso! Cole no SQL Editor do Supabase e clique em Run.';
+      } catch (_) {
+        cfgFeedbackMsg.style.display = 'block';
+        cfgFeedbackMsg.textContent = 'Abra QUIZ/supabase_setup.sql para copiar o script.';
+      }
+    });
+
+    async function renderQuizQrCode() {
+      const targetUrl = window.location.href.split('?')[0];
+      document.getElementById('qrCodeUrlLabel').textContent = targetUrl;
+      const mount = document.getElementById('qrCodeMountBox');
+      try {
+        const qrMod = await import('./src/utils/qrCodeGenerator.js');
+        mount.innerHTML = qrMod.createQRCodeSVG(targetUrl, 190);
+      } catch (_) {
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(targetUrl)}`;
+        mount.innerHTML = `<img src="${qrApiUrl}" alt="QR Code do Quiz" width="190" height="190" style="display:block;" />`;
+      }
+    }
+
+    document.getElementById('btnOpenQrModal')?.addEventListener('click', () => {
+      renderQuizQrCode();
+      document.getElementById('modalQrCode').classList.add('is-open');
+    });
+
+    document.getElementById('btnCloseQrModal').addEventListener('click', () => {
+      document.getElementById('modalQrCode').classList.remove('is-open');
+    });
+
+    // Polling passivo inteligente: a cada 60s (somente se a tela de ranking estiver ativa e a aba visível).
+    // Como o Supabase Realtime via WebSocket entrega novos resultados instantaneamente por push,
+    // não há necessidade de pollar a cada 10s, poupando CPU, dados móveis e conexões ao banco.
+    setInterval(() => {
+      if (!document.hidden && screens.ranking.classList.contains('is-active')) {
+        refreshLeaderboardView();
+      }
+    }, 60000);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && screens.ranking.classList.contains('is-active')) {
+        refreshLeaderboardView();
+      }
+    });
+
+    updateDbStatusBadge();
+    initSupabaseRealtimeSubscription();
+    updateReplayButtonsVisibility();
+
+    const initParams = new URLSearchParams(window.location.search);
+    if (initParams.get('telao') === '1' || initParams.get('ranking') === '1') {
+      document.body.classList.add('is-tv-mode');
+      showScreen('ranking');
+      hostSay(
+        '<strong>Ranking ao Vivo da Rua da Ciência!</strong> Venha desafiar os líderes!',
+        pickRandomMascotState(true),
+        'ppgGreen'
+      );
+      refreshLeaderboardView();
+    } else {
+      showScreen('welcome');
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
